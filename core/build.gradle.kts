@@ -6,6 +6,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
  */
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    // Android lint also analyzes this module, as a dependency of :app.
+    alias(libs.plugins.android.lint)
 }
 
 java {
@@ -28,6 +30,11 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlinx.coroutines.test)
     testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+lint {
+    abortOnError = true
+    warningsAsErrors = true
 }
 
 tasks.test {

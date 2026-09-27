@@ -1,4 +1,4 @@
-# ZzzTimer
+# <img src="fastlane/metadata/android/en-US/images/icon.png" alt="" width="48" align="top"> ZzzTimer
 
 [![CI](https://github.com/abhi-k9/ZzzTimer/actions/workflows/ci.yml/badge.svg)](https://github.com/abhi-k9/ZzzTimer/actions/workflows/ci.yml)
 
@@ -6,6 +6,9 @@ ZzzTimer helps you fall asleep while listening to music or podcasts.
 When the timer ends, the media volume is gradually lowered, playback is paused, then the volume is restored.
 
 It is a from-scratch rewrite of [Sleep Timer](https://github.com/SimonMarquis/SleepTimer) by Simon Marquis (see [NOTICE](NOTICE)).
+
+Download the APK from the [latest release](https://github.com/abhi-k9/ZzzTimer/releases/latest), and see
+[Verifying a download](#verifying-a-download).
 
 ## Usage
 
@@ -108,13 +111,16 @@ Release builds are minified. They are signed only when a signing configuration i
 
 ## Releasing
 
-Pushing a `vX.Y.Z` tag matching the version in `app/build.gradle.kts`, or running the
-[release workflow](.github/workflows/release.yml) manually on `main` (Actions → Release → Run workflow, which creates the
-tag from that version):
-it builds, tests and lints the app, signs the APK, verifies the signature, attests its build provenance, and publishes
-it with its SHA-256 checksum as a GitHub Release.
+1. Bump the version in `app/build.gradle.kts` on `main`.
+2. Run the [release workflow](.github/workflows/release.yml) on `main` (Actions → Release → Run workflow), which creates
+   the `vX.Y.Z` tag. Alternatively, push that tag yourself: it must point to a commit of `main`.
 
-It requires these repository secrets (Settings → Secrets and variables → Actions):
+The workflow builds the app from scratch (no shared build cache), runs the tests and lint, signs the APK, checks that it
+is signed with the expected certificate, attests its build provenance, and publishes it with its SHA-256 checksum as a
+GitHub Release. It runs in the `release` environment: protection rules such as required reviewers can be added to it in
+Settings → Environments.
+
+It requires these repository (or `release` environment) secrets, in Settings → Secrets and variables → Actions:
 
 | Secret                              | Value                                   |
 |-------------------------------------|-----------------------------------------|
@@ -123,19 +129,24 @@ It requires these repository secrets (Settings → Secrets and variables → Act
 | `ZZZTIMER_SIGNING_KEY_ALIAS`        | The key alias                           |
 | `ZZZTIMER_SIGNING_KEY_PASSWORD`     | The key password                        |
 
-A keystore can be created once with `keytool` (keep it and its passwords safe: every future update must be signed with
-the same key):
+A keystore can be created once with `keytool`. Keep it and its passwords safe: every future update must be signed with
+the same key. When the key changes, update `SIGNING_CERT_SHA256` in the release workflow.
 
 ```bash
 keytool -genkeypair -keystore zzztimer-release.jks -alias zzztimer -keyalg RSA -keysize 4096 -validity 10000
 base64 -w 0 zzztimer-release.jks   # value of ZZZTIMER_SIGNING_KEYSTORE_BASE64 (macOS: base64 -i zzztimer-release.jks)
 ```
 
-Anyone can check that a downloaded APK was built by this repository's workflow:
+### Verifying a download
 
-```bash
-gh attestation verify ZzzTimer-vX.Y.Z.apk --repo abhi-k9/ZzzTimer
-```
+- The APK is signed with this certificate (SHA-256), which tools like `apksigner verify --print-certs`, AppVerifier or
+  Obtainium can check:
+  `95:E5:0C:F0:03:27:57:2F:5E:89:C2:25:AF:ED:42:FF:1A:06:3E:F1:2E:3E:ED:07:5F:F3:AB:4B:67:9C:F0:08`
+- It was built by this repository's release workflow:
+  ```bash
+  gh attestation verify ZzzTimer-vX.Y.Z.apk --repo abhi-k9/ZzzTimer
+  ```
+- Its SHA-256 checksum is published next to it: `sha256sum --check ZzzTimer-vX.Y.Z.apk.sha256`
 
 ## Privacy
 

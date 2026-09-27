@@ -15,6 +15,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Supply chain: a new version is only proposed once it has been public for a week.
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns: [ "*" ]
@@ -24,6 +27,8 @@ updates:
     registries: "*"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       # Released together, and must stay aligned.
       kotlin:

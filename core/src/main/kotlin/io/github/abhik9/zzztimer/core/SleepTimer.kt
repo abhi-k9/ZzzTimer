@@ -123,7 +123,13 @@ class SleepTimer(
      */
     fun onDeadline(deadline: Long): DeadlineOutcome {
         val early = deadline > 0 && clock.elapsedMillis() < deadline - DEADLINE_TOLERANCE.inWholeMilliseconds
-        if (!early) return DeadlineOutcome.SLEEP
+        if (!early) {
+            // The display normally removes itself at the deadline, but the trigger may fire first: never leave a timer
+            // displayed once it has ended.
+            if (deadline > 0 && current()?.deadline == deadline) display.hide()
+            onChange()
+            return DeadlineOutcome.SLEEP
+        }
         // Dismissed by the user: cancel the timer, unless a new one has been started since (which re-armed the trigger).
         if (current() == null) {
             trigger.disarm()

@@ -1,18 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quick Settings tile and notification icon: simplified launcher icon (a single "Z"), white on transparent. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillAlpha="0.3"
-        android:fillColor="#FFF"
-        android:pathData="M7,20H1V18L4.39,14H1V12H7V14L3.62,18H7V20Z" />
-    <path
-        android:fillAlpha="0.6"
-        android:fillColor="#FFF"
-        android:pathData="M15,16H9V14L12.39,10H9V8H15V10L11.62,14H15V16" />
-    <path
-        android:fillAlpha="1.0"
-        android:fillColor="#FFF"
-        android:pathData="M23,12H17V10L20.39,6H17V4H23V6L19.62,10H23V12" />
+    android:viewportWidth="60"
+    android:viewportHeight="60">
+    <group
+        android:translateX="-24"
+        android:translateY="-24">
+        <!-- Countdown ring, open where the "Z"s rise. -->
+        <path
+            android:pathData="M77.56,64.99 A26,26 0 1,1 62.89,29.57"
+            android:strokeWidth="5.5"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round" />
+        <!-- Crescent moon. -->
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M47.49,41.7 A15.5,15.5 0 1,0 65.09,60.56 A13,13 0 0,1 47.49,41.7 Z" />
+        <path
+            android:pathData="M67.00,37.00 H77.00 L67.00,47.00 H77.00"
+            android:strokeWidth="3.8"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
 </vector>

@@ -12,6 +12,7 @@ import androidx.annotation.StringRes
 import androidx.core.net.toUri
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.Requirement
+import io.github.abhik9.zzztimer.core.StartResult
 
 private const val TAG = "System"
 
@@ -49,3 +50,8 @@ val Requirement.message: Int
     }
 
 fun Context.toast(@StringRes message: Int) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+
+/** Tells the user why a timer operation could not run, when it was [StartResult.Blocked]. */
+fun Context.reportBlocked(result: StartResult?) {
+    if (result is StartResult.Blocked) toast(result.requirement.message)
+}

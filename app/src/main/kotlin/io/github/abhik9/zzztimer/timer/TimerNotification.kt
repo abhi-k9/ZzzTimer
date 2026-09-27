@@ -13,6 +13,7 @@ import android.os.Build.VERSION_CODES.BAKLAVA
 import android.os.Build.VERSION_CODES_FULL
 import android.os.Bundle
 import android.text.format.DateFormat
+import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.Timer
@@ -37,7 +38,6 @@ internal class TimerNotification(
         const val CHANNEL_ID = "timer"
         private const val NOTIFICATION_TAG = "timer"
         private const val ID = 1
-        private const val EXTRA_DEADLINE = "io.github.abhik9.zzztimer.extra.DEADLINE"
 
         /** Idempotent: the channel is only created once, and later calls never override the user's choices. */
         fun createChannel(context: Context) {

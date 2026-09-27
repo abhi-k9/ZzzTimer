@@ -4,10 +4,9 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import io.github.abhik9.zzztimer.core.StartResult
+import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.sleepTimer
-import io.github.abhik9.zzztimer.system.message
-import io.github.abhik9.zzztimer.system.toast
+import io.github.abhik9.zzztimer.system.reportBlocked
 
 /**
  * Handles the notification actions. Not exported: only reachable through the app's own [PendingIntent]s.
@@ -21,7 +20,6 @@ class TimerActionReceiver : BroadcastReceiver() {
 
         /** The notification has been removed by a timeout or the user, see [dismissIntent]. */
         private const val ACTION_DISMISSED = "io.github.abhik9.zzztimer.timer.DISMISSED"
-        private const val EXTRA_DEADLINE = "io.github.abhik9.zzztimer.extra.DEADLINE"
 
         private fun intent(context: Context, action: String) = Intent(context, TimerActionReceiver::class.java).setAction(action)
 
@@ -42,14 +40,12 @@ class TimerActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val timer = context.sleepTimer()
-        val result = when (intent.action) {
-            ACTION_EXTEND -> timer.extend()
-            ACTION_REDUCE -> timer.reduce()
+        when (intent.action) {
+            ACTION_EXTEND -> context.reportBlocked(timer.extend())
+            ACTION_REDUCE -> context.reportBlocked(timer.reduce())
             ACTION_STOP -> timer.stop()
             // The sleep itself is triggered by the exact alarm: only dismissals matter here.
             ACTION_DISMISSED -> timer.onDeadline(intent.getLongExtra(EXTRA_DEADLINE, 0L))
-            else -> null
         }
-        if (result is StartResult.Blocked) context.toast(result.requirement.message)
     }
 }

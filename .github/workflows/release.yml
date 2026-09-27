@@ -1,7 +1,7 @@
 name: Release
 
 # Builds a signed release APK and publishes it as a GitHub Release, either:
-# - when a `vX.Y.Z` tag is pushed,
+# - when a `vX.Y.Z` tag pointing to a commit of `main` is pushed,
 # - or when run manually (Actions → Release → Run workflow) on `main`: the tag is then created from the app version.
 # Requires the repository secrets described in the README ("Releasing").
 on:
@@ -16,15 +16,25 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   release:
     name: Build & publish
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Scopes the signing secrets: protection rules (required reviewers, allowed refs) can be added to this environment
+    # in Settings → Environments.
+    environment: release
     permissions:
-      contents: write # create the release
-      id-token: write # sign the build provenance attestation
-      attestations: write
+      contents: write # create the tag and the release
+      id-token: write # sign the build provenance attestation with Sigstore
+      attestations: write # store the build provenance attestation
+    env:
+      # SHA-256 digest of the release signing certificate: an APK signed with any other key is never published.
+      SIGNING_CERT_SHA256: 95e50cf00327572f5e89c225afed42ff1a063ef12e3eed075ff3ab4b679cf008
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,8 +48,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
-          # Releases never write to the cache shared with regular builds.
-          cache-read-only: true
+          # Released artifacts are always built from scratch: no cache shared with other workflows can alter them.
+          cache-disabled: true
 
       - name: Resolve the release tag
         env:
@@ -49,6 +59,11 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
             if [ "$tag" != "$GITHUB_REF_NAME" ]; then
               echo "::error::Tag $GITHUB_REF_NAME does not match the app version $tag (app/build.gradle.kts)"
+              exit 1
+            fi
+            status=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq .status)
+            if [ "$status" != "identical" ] && [ "$status" != "behind" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME points to a commit that is not on main ($status)"
               exit 1
             fi
           else
@@ -71,6 +86,7 @@ jobs:
             echo "::error::Missing ZZZTIMER_SIGNING_KEYSTORE_BASE64 secret, see README (Releasing)"
             exit 1
           fi
+          umask 077
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
           echo "ZZZTIMER_SIGNING_STORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
@@ -81,6 +97,10 @@ jobs:
           ZZZTIMER_SIGNING_KEY_PASSWORD: ${{ secrets.ZZZTIMER_SIGNING_KEY_PASSWORD }}
         run: ./gradlew assembleRelease :core:test lint --stacktrace
 
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
       - name: Verify the signature
         run: |
           apk=app/build/outputs/apk/release/app-release.apk
@@ -88,15 +108,15 @@ jobs:
             echo "::error::No signed APK was produced, check the signing secrets"
             exit 1
           fi
-          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner
-          "$apksigner" verify --verbose --print-certs "$apk"
+          apksigner=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)/apksigner
+          digests=$("$apksigner" verify --verbose --print-certs "$apk" | tee /dev/stderr | sed -n 's/.*certificate SHA-256 digest: //p' | sort -u)
+          if [ "$digests" != "$SIGNING_CERT_SHA256" ]; then
+            echo "::error::The APK is not signed with the expected certificate ($SIGNING_CERT_SHA256)"
+            exit 1
+          fi
           mkdir -p dist
           cp "$apk" "dist/ZzzTimer-$TAG.apk"
           (cd dist && sha256sum "ZzzTimer-$TAG.apk" > "ZzzTimer-$TAG.apk.sha256")
-
-      - name: Remove the keystore
-        if: always()
-        run: rm -f "$RUNNER_TEMP/release.jks"
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2

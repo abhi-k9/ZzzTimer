@@ -26,13 +26,16 @@ fun versionCodeOf(major: Int, minor: Int, patch: Int, build: Int): Int {
 /**
  * Release signing is read from Gradle properties or environment variables, so that no secret is ever committed:
  * `zzztimer.signing.storeFile` / `ZZZTIMER_SIGNING_STORE_FILE`, and likewise `storePassword`, `keyAlias`, `keyPassword`.
- * Release builds are left unsigned when they are missing.
+ * Release builds are left unsigned when no store file is configured.
  */
 fun signingValue(name: String): String? =
     providers.gradleProperty("zzztimer.signing.$name")
         .orElse(providers.environmentVariable("ZZZTIMER_SIGNING_" + name.replace(Regex("([A-Z])"), "_$1").uppercase()))
         .orNull
         ?.takeIf { it.isNotBlank() }
+
+fun requiredSigningValue(name: String): String =
+    requireNotNull(signingValue(name)) { "Release signing is configured, but zzztimer.signing.$name is missing" }
 
 android {
     namespace = "io.github.abhik9.zzztimer"
@@ -50,10 +53,14 @@ android {
         val storeFile = signingValue("storeFile")
         if (storeFile != null) {
             create("release") {
-                this.storeFile = file(storeFile)
-                storePassword = signingValue("storePassword")
-                keyAlias = signingValue("keyAlias")
-                keyPassword = signingValue("keyPassword")
+                this.storeFile = file(storeFile).also { require(it.isFile) { "Release keystore not found: $it" } }
+                storePassword = requiredSigningValue("storePassword")
+                keyAlias = requiredSigningValue("keyAlias")
+                keyPassword = requiredSigningValue("keyPassword")
+                // v2 for Android 8.0 to 8.1, v3 since Android 9, which also allows rotating the signing key later.
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }

@@ -214,6 +214,26 @@ class SleepTimerTest {
             display.hide() // timed out
             assertEquals(DeadlineOutcome.SLEEP, timer.onDeadline(started.deadline))
             assertEquals(0, trigger.disarms)
+            assertEquals(2, changes)
+        }
+
+        @Test
+        fun `a trigger firing before the display timed out removes it`() {
+            val started = timer.start(20.minutes).started()
+            clock.advance(20.minutes)
+            assertEquals(DeadlineOutcome.SLEEP, timer.onDeadline(started.deadline))
+            assertNull(display.shown)
+            assertEquals(0, trigger.disarms)
+        }
+
+        @Test
+        fun `a late signal never removes a newer timer`() {
+            val old = timer.start(1.minutes).started()
+            clock.advance(2.minutes)
+            val new = timer.start(30.minutes).started()
+            assertEquals(DeadlineOutcome.SLEEP, timer.onDeadline(old.deadline))
+            assertEquals(new, display.shown)
+            assertEquals(new, trigger.armed)
         }
 
         @Test

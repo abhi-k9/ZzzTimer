@@ -1,0 +1,11 @@
+ZzzTimer helps you fall asleep while listening to music or podcasts. When the timer ends, the volume is gradually lowered, playback is paused, then the volume is restored.
+
+<ul>
+<li>Start the default timer from a Quick Settings tile, or any duration from the app.</li>
+<li>Extend, reduce or stop it from its notification, shown as a Live Update on Android 16 and later.</li>
+<li>Dismissing the notification cancels the timer.</li>
+<li>Configurable default duration and steps, light and dark themes, Material You colors.</li>
+<li>Automation with Tasker or adb, which can be turned off.</li>
+</ul>
+
+No Internet permission, no ads, no tracking: nothing ever leaves your device.

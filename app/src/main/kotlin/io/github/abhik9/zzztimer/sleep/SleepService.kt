@@ -15,11 +15,11 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 import android.os.IBinder
 import android.util.Log
+import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DeadlineOutcome
 import io.github.abhik9.zzztimer.core.SleepRoutine
 import io.github.abhik9.zzztimer.sleepTimer
-import io.github.abhik9.zzztimer.tile.requestTileUpdate
 import io.github.abhik9.zzztimer.timer.TimerNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +39,6 @@ class SleepService : Service() {
     companion object {
         private const val TAG = "SleepService"
         private const val NOTIFICATION_ID = 2
-        private const val EXTRA_DEADLINE = "io.github.abhik9.zzztimer.extra.DEADLINE"
         private const val EXTRA_FOREGROUND = "io.github.abhik9.zzztimer.extra.FOREGROUND"
 
         private fun intent(context: Context) = Intent(context, SleepService::class.java)
@@ -71,29 +70,43 @@ class SleepService : Service() {
     /** Sleeps run one at a time, so that a volume is never restored in the middle of another fade. */
     private val mutex = Mutex()
 
+    // Main thread only.
+    private var runningSleeps = 0
+    private var lastStartId = 0
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         // Must be called right away when started with `startForegroundService()`.
         if (intent?.getBooleanExtra(EXTRA_FOREGROUND, false) == true) enterForeground()
         val deadline = intent?.getLongExtra(EXTRA_DEADLINE, 0L) ?: 0L
         // Timer operations run on the main thread, see SleepTimer.
-        if (sleepTimer().onDeadline(deadline) != DeadlineOutcome.SLEEP) {
-            stopSelf(startId)
-            return START_NOT_STICKY
-        }
+        if (sleepTimer().onDeadline(deadline) == DeadlineOutcome.SLEEP) sleep()
+        stopWhenIdle()
+        return START_NOT_STICKY
+    }
+
+    private fun sleep() {
+        runningSleeps++
         scope.launch {
             try {
                 mutex.withLock { SleepRoutine(AndroidMediaAudio(getSystemService(AudioManager::class.java))).run() }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
-                    requestTileUpdate()
-                    // Only stops the service (and removes its notification) when it has not been started again since.
-                    stopSelf(startId)
+                    runningSleeps--
+                    stopWhenIdle()
                 }
             }
         }
-        return START_NOT_STICKY
+    }
+
+    /**
+     * Stops the service (and removes its notification) once every sleep is done: a signal that does not need one (e.g. a
+     * dismissal) must not interrupt a running fade.
+     */
+    private fun stopWhenIdle() {
+        if (runningSleeps == 0) stopSelf(lastStartId)
     }
 
     /** `shortService` foreground services must stop within seconds after this callback, or the app is killed. */

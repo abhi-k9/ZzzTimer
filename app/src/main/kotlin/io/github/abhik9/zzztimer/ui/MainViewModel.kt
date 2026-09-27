@@ -15,6 +15,7 @@ import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.settings.ThemeMode
 import io.github.abhik9.zzztimer.settings.UserSettings
 import io.github.abhik9.zzztimer.sleepTimer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlin.time.Duration.Companion.minutes
@@ -60,6 +62,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     val state: StateFlow<MainUiState> = combine(settings.changes, ticks) { current, _ -> uiState(current) }
+        // Reading the timer and the permissions are binder calls: keep them off the main thread.
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds.inWholeMilliseconds), uiState(settings.snapshot()))
 
     private fun uiState(userSettings: UserSettings) = MainUiState(

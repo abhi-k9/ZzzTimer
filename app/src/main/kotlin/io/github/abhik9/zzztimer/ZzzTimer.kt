@@ -9,6 +9,9 @@ import io.github.abhik9.zzztimer.tile.requestTileUpdate
 import io.github.abhik9.zzztimer.timer.AndroidSleepTrigger
 import io.github.abhik9.zzztimer.timer.TimerNotification
 
+/** Extra holding a [io.github.abhik9.zzztimer.core.Timer.deadline], in intents and in the timer notification. */
+internal const val EXTRA_DEADLINE = "io.github.abhik9.zzztimer.extra.DEADLINE"
+
 private object SystemDeviceClock : DeviceClock {
     override fun wallMillis() = System.currentTimeMillis()
     override fun elapsedMillis() = SystemClock.elapsedRealtime()

@@ -4,58 +4,29 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import io.github.abhik9.zzztimer.core.StartResult
-import io.github.abhik9.zzztimer.core.TimerCommand
-import io.github.abhik9.zzztimer.core.durationOfSeconds
+import io.github.abhik9.zzztimer.core.Automation
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.sleepTimer
-import io.github.abhik9.zzztimer.system.message
-import io.github.abhik9.zzztimer.system.toast
-import kotlin.time.Duration
+import io.github.abhik9.zzztimer.system.reportBlocked
 
 /**
- * Public automation API, used by tools like Tasker or `adb` (see README). Any app can send these broadcasts, so:
- * - it can be disabled from the app settings,
- * - it only exposes timer operations (no settings, no data),
+ * Receives the [Automation] broadcasts. Any app can send them, so:
+ * - they can be disabled from the app settings,
+ * - they only expose timer operations (no settings, no data),
  * - every input is validated and clamped.
  */
 class AutomationReceiver : BroadcastReceiver() {
 
-    companion object {
-        private const val TAG = "AutomationReceiver"
-        private const val PREFIX = "io.github.abhik9.zzztimer.action."
-        const val ACTION_START = PREFIX + "START"
-        const val ACTION_STOP = PREFIX + "STOP"
-        const val ACTION_TOGGLE = PREFIX + "TOGGLE"
-        const val ACTION_UPDATE = PREFIX + "UPDATE"
-        const val ACTION_INCREMENT = PREFIX + "INCREMENT"
-        const val ACTION_DECREMENT = PREFIX + "DECREMENT"
-
-        /** Duration in seconds, as a `long` or an `int` extra. */
-        const val EXTRA_DURATION = "duration"
-
-        fun parse(action: String?, durationSeconds: Long?): TimerCommand? {
-            val duration = durationSeconds?.let(::durationOfSeconds)
-            return when (action) {
-                ACTION_START -> TimerCommand.Start(duration)
-                ACTION_STOP -> TimerCommand.Stop
-                ACTION_TOGGLE -> TimerCommand.Toggle
-                ACTION_UPDATE -> TimerCommand.Adjust(duration ?: Duration.ZERO)
-                ACTION_INCREMENT -> TimerCommand.Extend
-                ACTION_DECREMENT -> TimerCommand.Reduce
-                else -> null
-            }
-        }
+    private companion object {
+        const val TAG = "AutomationReceiver"
 
         /**
          * Extras of an external intent are untrusted: unparcelling them can throw.
-         * @return the duration extra in seconds, or `null` when missing or invalid.
+         * @return the [Automation.EXTRA_DURATION] extra, or `null` when missing or invalid.
          */
-        private fun Intent.durationSeconds(): Long? = try {
-            when {
-                !hasExtra(EXTRA_DURATION) -> null
-                else -> getLongExtra(EXTRA_DURATION, 0L).takeIf { it != 0L } ?: getIntExtra(EXTRA_DURATION, 0).toLong()
-            }
+        fun Intent.durationSeconds(): Long? = try {
+            val key = Automation.EXTRA_DURATION
+            if (hasExtra(key)) getLongExtra(key, 0L).takeIf { it != 0L } ?: getIntExtra(key, 0).toLong() else null
         } catch (e: RuntimeException) {
             Log.w(TAG, "Invalid extras", e)
             null
@@ -67,8 +38,7 @@ class AutomationReceiver : BroadcastReceiver() {
             Log.i(TAG, "Automation is disabled, ignoring ${intent.action}")
             return
         }
-        val command = parse(intent.action, intent.durationSeconds()) ?: return
-        val result = context.sleepTimer().execute(command)
-        if (result is StartResult.Blocked) context.toast(result.requirement.message)
+        val command = Automation.parse(intent.action, intent.durationSeconds()) ?: return
+        context.reportBlocked(context.sleepTimer().execute(command))
     }
 }

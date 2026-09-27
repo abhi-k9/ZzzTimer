@@ -6,4 +6,4 @@ Copyright 2020 Simon Marquis, licensed under the Apache License, Version 2.0.
 
 Changes from the original work: the code has been rewritten and restructured (pure Kotlin core module,
 new Android adapters and UI), renamed, and extended (automation toggle, toggle action, input validation).
-The launcher and tile icons, the fallback color palette and the overall timer mechanism come from the original work.
+The fallback color palette and the overall timer mechanism come from the original work.
