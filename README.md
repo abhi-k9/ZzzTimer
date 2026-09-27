@@ -108,7 +108,9 @@ Release builds are minified. They are signed only when a signing configuration i
 
 ## Releasing
 
-Pushing a `vX.Y.Z` tag matching the version in `app/build.gradle.kts` runs the [release workflow](.github/workflows/release.yml):
+Pushing a `vX.Y.Z` tag matching the version in `app/build.gradle.kts`, or running the
+[release workflow](.github/workflows/release.yml) manually on `main` (Actions → Release → Run workflow, which creates the
+tag from that version):
 it builds, tests and lints the app, signs the APK, verifies the signature, attests its build provenance, and publishes
 it with its SHA-256 checksum as a GitHub Release.
 
