@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Live Updates, since Android 16 QPR2. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- Since Android 17, the sleep is triggered by an exact alarm starting a foreground service, see SleepTriggers.kt -->
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:minSdkVersion="37" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        android:minSdkVersion="37"
+        tools:ignore="ForegroundServicesPolicy" />
+
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ZzzTimer">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Long press on the Quick Settings tile. -->
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".tile.SleepTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
+        <service
+            android:name=".sleep.SleepService"
+            android:exported="false"
+            android:foregroundServiceType="shortService" />
+
+        <!-- Notification actions: only reachable through the app's own PendingIntents. -->
+        <receiver
+            android:name=".timer.TimerActionReceiver"
+            android:exported="false" />
+
+        <!-- Public automation API (Tasker, adb…), documented in the README. It can be disabled from the app settings. -->
+        <receiver
+            android:name=".automation.AutomationReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="io.github.abhik9.zzztimer.action.START" />
+                <action android:name="io.github.abhik9.zzztimer.action.STOP" />
+                <action android:name="io.github.abhik9.zzztimer.action.TOGGLE" />
+                <action android:name="io.github.abhik9.zzztimer.action.UPDATE" />
+                <action android:name="io.github.abhik9.zzztimer.action.INCREMENT" />
+                <action android:name="io.github.abhik9.zzztimer.action.DECREMENT" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

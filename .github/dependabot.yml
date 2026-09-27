@@ -1,0 +1,34 @@
+# https://docs.github.com/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+
+version: 2
+
+registries:
+  maven-google:
+    type: maven-repository
+    url: https://dl.google.com/dl/android/maven2/
+  gradle-plugins:
+    type: maven-repository
+    url: https://plugins.gradle.org/m2/
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: [ "*" ]
+
+  - package-ecosystem: gradle
+    directory: /
+    registries: "*"
+    schedule:
+      interval: weekly
+    groups:
+      # Released together, and must stay aligned.
+      kotlin:
+        patterns: [ "org.jetbrains.kotlin*" ]
+      androidx:
+        patterns: [ "androidx.*" ]
+      junit:
+        patterns: [ "org.junit*" ]

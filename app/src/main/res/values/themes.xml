@@ -1,0 +1,4 @@
+<resources>
+    <!-- Window theme displayed until Compose draws: the UI itself is themed by ZzzTimerTheme. -->
+    <style name="Theme.ZzzTimer" parent="@android:style/Theme.Material.Light.NoActionBar" />
+</resources>
