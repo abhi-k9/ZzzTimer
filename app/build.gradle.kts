@@ -84,9 +84,6 @@ android {
         abortOnError = true
         warningsAsErrors = true
         checkDependencies = true
-        // Findings are printed in the build output (CI logs), in addition to the HTML and SARIF reports.
-        textReport = true
-        textOutput = file("stdout")
         // Dependency updates are handled by Dependabot, not by failing unrelated builds.
         disable += setOf("AndroidGradlePluginVersion", "GradleDependency", "NewerVersionAvailable", "OldTargetApi")
     }

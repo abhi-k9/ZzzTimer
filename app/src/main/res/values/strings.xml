@@ -35,7 +35,7 @@
     <string name="settings_increment_description">The “+” button</string>
     <string name="settings_decrement">Reduce by</string>
     <string name="settings_decrement_description">The “−” button</string>
-    <string name="settings_range">Between %1$d and %2$d minutes</string>
+    <string name="settings_range">From %1$s to %2$s</string>
 
     <string name="section_appearance">Appearance</string>
     <string name="theme_title">Theme</string>
