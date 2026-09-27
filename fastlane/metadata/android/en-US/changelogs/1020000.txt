@@ -1,0 +1,1 @@
+- New opt-in diagnostics mode: records what the timer does on your device, and exports it to a file to help investigate issues.
