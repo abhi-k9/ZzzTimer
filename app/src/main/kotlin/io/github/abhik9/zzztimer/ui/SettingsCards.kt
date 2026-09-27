@@ -156,7 +156,9 @@ internal fun MinutesDialog(setting: DurationSetting, initial: Int, onDismiss: ()
                 singleLine = true,
                 suffix = { Text(stringResource(R.string.unit_minutes)) },
                 isError = value == null,
-                supportingText = { Text(stringResource(R.string.settings_range, formatMinutes(setting.range.first), formatMinutes(setting.range.last))) },
+                supportingText = {
+                    Text(stringResource(R.string.settings_range, formatMinutes(setting.range.first), formatMinutes(setting.range.last)))
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { value?.let(onConfirm) }),
                 modifier = Modifier.focusRequester(focusRequester),
