@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import io.github.abhik9.zzztimer.core.Automation
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.system.reportBlocked
@@ -36,9 +37,12 @@ class AutomationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (!SettingsStore.from(context).automationEnabled) {
             Log.i(TAG, "Automation is disabled, ignoring ${intent.action}")
+            context.diagnostics.record { "automation: ignored ${intent.action} (disabled)" }
             return
         }
-        val command = Automation.parse(intent.action, intent.durationSeconds()) ?: return
+        val command = Automation.parse(intent.action, intent.durationSeconds())
+        context.diagnostics.record { "automation: ${intent.action} -> $command" }
+        if (command == null) return
         context.reportBlocked(context.sleepTimer().execute(command))
     }
 }

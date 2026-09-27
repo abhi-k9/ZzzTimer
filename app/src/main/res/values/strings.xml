@@ -49,6 +49,15 @@
     <string name="automation_title">Allow other apps to control the timer</string>
     <string name="automation_description">Lets tools like Tasker start, change or stop the timer.</string>
 
+    <string name="section_diagnostics">Diagnostics</string>
+    <string name="diagnostics_title">Record diagnostics</string>
+    <string name="diagnostics_description">Keeps a log of what the timer does, to help investigate issues. It stays on this device unless you export it.</string>
+    <string name="diagnostics_export">Export log</string>
+    <string name="diagnostics_export_description">Save it with device details to a file (%1$s)</string>
+    <string name="diagnostics_clear">Clear log</string>
+    <string name="diagnostics_exported">Diagnostics exported</string>
+    <string name="diagnostics_export_failed">Could not export the diagnostics</string>
+
     <!-- Missing permissions -->
     <string name="warning_notifications_title">Notifications are off</string>
     <string name="warning_notifications_body">The timer runs as a notification: it can’t start without it.</string>

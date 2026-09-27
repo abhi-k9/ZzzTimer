@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import io.github.abhik9.zzztimer.EXTRA_DEADLINE
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.system.reportBlocked
 
@@ -39,6 +40,7 @@ class TimerActionReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        context.diagnostics.record { "notification: ${intent.action}" }
         val timer = context.sleepTimer()
         when (intent.action) {
             ACTION_EXTEND -> context.reportBlocked(timer.extend())

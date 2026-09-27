@@ -16,6 +16,7 @@ import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.StartResult
 import io.github.abhik9.zzztimer.core.Timer
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.system.message
 import io.github.abhik9.zzztimer.system.settingsIntent
@@ -32,6 +33,7 @@ fun Context.requestTileUpdate() {
     } catch (e: RuntimeException) {
         // Refused on some devices while the app is in the background: the tile refreshes when it becomes visible anyway.
         Log.w(TAG, "Tile update refused", e)
+        diagnostics.record { "tile: update refused: $e" }
     }
 }
 
@@ -43,6 +45,7 @@ class SleepTileService : TileService() {
     override fun onStartListening() = render(sleepTimer().current())
 
     override fun onClick() {
+        diagnostics.record { "tile: click, locked=$isLocked" }
         when (val result = sleepTimer().toggle()) {
             is StartResult.Started -> render(result.timer)
             // The notification may briefly still be reported as active once cancelled: don't query it.

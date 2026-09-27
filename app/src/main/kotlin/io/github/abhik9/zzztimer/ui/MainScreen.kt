@@ -46,6 +46,9 @@ interface MainActions {
     fun setThemeMode(mode: ThemeMode)
     fun setDynamicColor(enabled: Boolean)
     fun setAutomationEnabled(enabled: Boolean)
+    fun setDiagnosticsEnabled(enabled: Boolean)
+    fun exportDiagnostics()
+    fun clearDiagnostics()
     fun resolve(requirement: Requirement)
 }
 
@@ -94,6 +97,8 @@ fun MainScreen(
                 AppearanceCard(state, actions)
                 SectionHeader(R.string.section_automation)
                 AutomationCard(state, actions)
+                SectionHeader(R.string.section_diagnostics)
+                DiagnosticsCard(state, actions)
                 Spacer(Modifier.height(16.dp))
             }
         }
@@ -135,6 +140,9 @@ private object PreviewActions : MainActions {
     override fun setThemeMode(mode: ThemeMode) = Unit
     override fun setDynamicColor(enabled: Boolean) = Unit
     override fun setAutomationEnabled(enabled: Boolean) = Unit
+    override fun setDiagnosticsEnabled(enabled: Boolean) = Unit
+    override fun exportDiagnostics() = Unit
+    override fun clearDiagnostics() = Unit
     override fun resolve(requirement: Requirement) = Unit
 }
 

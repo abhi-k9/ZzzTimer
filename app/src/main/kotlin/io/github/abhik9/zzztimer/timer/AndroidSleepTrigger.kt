@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import io.github.abhik9.zzztimer.core.SleepTrigger
 import io.github.abhik9.zzztimer.core.Timer
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.sleep.SleepService
 
 /**
@@ -54,20 +55,27 @@ private class ExactAlarmTrigger(private val context: Context) : AndroidSleepTrig
     override fun isPermitted() = alarms.canScheduleExactAlarms()
 
     override fun arm(timer: Timer): Boolean {
-        if (!alarms.canScheduleExactAlarms()) return false
+        if (!alarms.canScheduleExactAlarms()) {
+            context.diagnostics.record { "alarm: not allowed" }
+            return false
+        }
         return try {
             val operation = SleepService.pendingIntent(context, timer.deadline, foreground = true)
             alarms.setExactAndAllowWhileIdle(ELAPSED_REALTIME_WAKEUP, timer.deadline, operation)
+            context.diagnostics.record { "alarm: armed for ${timer.deadline}" }
             true
         } catch (e: SecurityException) {
             // The permission has been revoked in the meantime.
             Log.w(TAG, "Exact alarm denied", e)
+            context.diagnostics.record { "alarm: denied: $e" }
             false
         }
     }
 
     override fun disarm() {
-        SleepService.existingPendingIntent(context, foreground = true)?.let(alarms::cancel)
+        val operation = SleepService.existingPendingIntent(context, foreground = true)
+        context.diagnostics.record { "alarm: disarmed (armed=${operation != null})" }
+        operation?.let(alarms::cancel)
     }
 
     override fun deleteIntent(timer: Timer) = TimerActionReceiver.dismissIntent(context, timer.deadline)

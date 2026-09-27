@@ -34,6 +34,7 @@ class SleepRoutine(
     private val maxFade: Duration = 30.seconds,
     private val maxFadeStep: Duration = 1.seconds,
     private val restoreDelay: Duration = 2.seconds,
+    private val log: EventLog = EventLog.NONE,
 ) {
 
     /**
@@ -42,12 +43,14 @@ class SleepRoutine(
     suspend fun run() {
         // Read at the time of the fade: the user may have changed the volume while the timer was running.
         val volume = audio.volume
+        log.record { "sleep: volume=$volume min=${audio.minVolume} playing=${audio.isPlaying} fixed=${audio.isVolumeFixed}" }
         try {
             // Pointless when nothing is playing locally, e.g. when casting.
             if (audio.isPlaying && !audio.isVolumeFixed) fadeOut()
         } finally {
             withContext(NonCancellable) {
                 audio.pause()
+                log.record { "sleep: pause requested, playing=${audio.isPlaying}" }
                 restore(volume)
             }
         }
@@ -63,12 +66,14 @@ class SleepRoutine(
         val min = audio.minVolume
         val steps = audio.volume - min
         val stepDelay = fadeStepDelay(steps)
+        log.record { "fade: $steps steps of $stepDelay" }
         // Bounded: the volume may never reach `min` (user interaction, OEM policies…).
         repeat(steps) {
             audio.lowerVolume()
             delay(stepDelay)
             if (audio.volume <= min) return
         }
+        log.record { "fade: stopped at volume ${audio.volume}, above the minimum $min" }
     }
 
     private suspend fun restore(volume: Int) {
@@ -76,7 +81,11 @@ class SleepRoutine(
         // Lets the player pause before the volume goes back up.
         delay(restoreDelay)
         // The player ignored the pause request: keep it quiet rather than blasting audio at full volume.
-        if (audio.isPlaying) return
+        if (audio.isPlaying) {
+            log.record { "restore: skipped, still playing at volume ${audio.volume}" }
+            return
+        }
         audio.restoreVolume(volume)
+        log.record { "restore: volume $volume requested, now ${audio.volume}" }
     }
 }

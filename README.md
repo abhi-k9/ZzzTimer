@@ -54,6 +54,19 @@ adb shell am broadcast -n io.github.abhik9.zzztimer/.automation.AutomationReceiv
 
 Debug builds use the `io.github.abhik9.zzztimer.debug` package: adjust the component name (`-n`) accordingly.
 
+## Diagnostics
+
+When something doesn't behave as expected, turn on **Record diagnostics** in the app settings, reproduce the issue,
+then use **Export log** to save it to a file.
+
+- The log records what the timer does and why: timers started, extended or stopped, alarms, deadlines, dismissals, each
+  step of the fade out, the sleep service, automation broadcasts, permission changes, and crashes.
+- The export starts with a snapshot of the app and device state: versions, permissions, battery optimizations, standby
+  bucket, settings and the running timer.
+- It contains no personal data, stays in the app's private storage (excluded from backups), is capped at about 512 KB,
+  and only leaves the device when you export it. **Clear log** deletes it.
+- Nothing is recorded while the setting is off, which is the default.
+
 ## How it works
 
 The ongoing notification is the source of truth of the timer: the timer exists only while its notification is posted,

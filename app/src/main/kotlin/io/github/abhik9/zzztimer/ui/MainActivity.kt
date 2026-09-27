@@ -2,6 +2,7 @@ package io.github.abhik9.zzztimer.ui
 
 import android.Manifest.permission.POST_NOTIFICATIONS
 import android.app.PendingIntent
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -11,22 +12,28 @@ import android.graphics.Color
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.TIRAMISU
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.StartResult
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.settings.ThemeMode
 import io.github.abhik9.zzztimer.system.settingsIntent
 import io.github.abhik9.zzztimer.system.startSettings
+import io.github.abhik9.zzztimer.system.toast
 import io.github.abhik9.zzztimer.ui.theme.ZzzTimerTheme
+import java.time.LocalDate
 
 /**
  * Starts a timer of an exact duration, controls the running one, and holds the settings.
@@ -35,6 +42,8 @@ import io.github.abhik9.zzztimer.ui.theme.ZzzTimerTheme
 class MainActivity : ComponentActivity() {
 
     companion object {
+        private const val TAG = "MainActivity"
+
         fun pendingIntent(context: Context): PendingIntent =
             PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
     }
@@ -43,8 +52,13 @@ class MainActivity : ComponentActivity() {
 
     private val notificationPermission = registerForActivityResult(RequestPermission()) { granted ->
         viewModel.refresh()
+        diagnostics.record { "permission: notifications granted=$granted" }
         // Denied without any prompt (e.g. after two refusals): fall back to the settings.
         if (!granted) openSettings(Requirement.NOTIFICATIONS)
+    }
+
+    private val exportDiagnostics = registerForActivityResult(CreateDocument("text/plain")) { destination ->
+        destination?.let(viewModel::exportDiagnostics)
     }
 
     private val actions = object : MainActions {
@@ -62,6 +76,18 @@ class MainActivity : ComponentActivity() {
 
         override fun setDynamicColor(enabled: Boolean) = viewModel.setDynamicColor(enabled)
         override fun setAutomationEnabled(enabled: Boolean) = viewModel.setAutomationEnabled(enabled)
+        override fun setDiagnosticsEnabled(enabled: Boolean) = viewModel.setDiagnosticsEnabled(enabled)
+        override fun clearDiagnostics() = viewModel.clearDiagnostics()
+
+        override fun exportDiagnostics() {
+            try {
+                exportDiagnostics.launch("zzztimer-diagnostics-${LocalDate.now()}.txt")
+            } catch (e: ActivityNotFoundException) {
+                // No document provider on the device.
+                Log.w(TAG, "Cannot pick a destination", e)
+                toast(R.string.diagnostics_export_failed)
+            }
+        }
         override fun resolve(requirement: Requirement) = this@MainActivity.resolve(requirement)
     }
 

@@ -19,6 +19,7 @@ import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DeadlineOutcome
 import io.github.abhik9.zzztimer.core.SleepRoutine
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.timer.TimerNotification
 import kotlinx.coroutines.CoroutineScope
@@ -78,9 +79,11 @@ class SleepService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         lastStartId = startId
-        // Must be called right away when started with `startForegroundService()`.
-        if (intent?.getBooleanExtra(EXTRA_FOREGROUND, false) == true) enterForeground()
+        val foreground = intent?.getBooleanExtra(EXTRA_FOREGROUND, false) == true
         val deadline = intent?.getLongExtra(EXTRA_DEADLINE, 0L) ?: 0L
+        diagnostics.record { "service: start #$startId, foreground=$foreground, deadline=$deadline, running=$runningSleeps" }
+        // Must be called right away when started with `startForegroundService()`.
+        if (foreground) enterForeground()
         // Timer operations run on the main thread, see SleepTimer.
         if (sleepTimer().onDeadline(deadline) == DeadlineOutcome.SLEEP) sleep()
         stopWhenIdle()
@@ -91,7 +94,9 @@ class SleepService : Service() {
         runningSleeps++
         scope.launch {
             try {
-                mutex.withLock { SleepRoutine(AndroidMediaAudio(getSystemService(AudioManager::class.java))).run() }
+                mutex.withLock {
+                    SleepRoutine(AndroidMediaAudio(getSystemService(AudioManager::class.java), diagnostics), log = diagnostics).run()
+                }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
                     runningSleeps--
@@ -106,11 +111,16 @@ class SleepService : Service() {
      * dismissal) must not interrupt a running fade.
      */
     private fun stopWhenIdle() {
-        if (runningSleeps == 0) stopSelf(lastStartId)
+        if (runningSleeps > 0) return
+        diagnostics.record { "service: stop #$lastStartId" }
+        stopSelf(lastStartId)
     }
 
     /** `shortService` foreground services must stop within seconds after this callback, or the app is killed. */
-    override fun onTimeout(startId: Int, fgsType: Int) = stopSelf()
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        diagnostics.record { "service: timeout #$startId" }
+        stopSelf()
+    }
 
     override fun onDestroy() {
         // Cancels a running fade: the routine still pauses playback and restores the volume.
@@ -134,6 +144,7 @@ class SleepService : Service() {
         } catch (e: ForegroundServiceStartNotAllowedException) {
             // Still try to pause playback: it does not require a foreground service.
             Log.w(TAG, "Foreground service not allowed", e)
+            diagnostics.record { "service: foreground not allowed: $e" }
         }
     }
 }

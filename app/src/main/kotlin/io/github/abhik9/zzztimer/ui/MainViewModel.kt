@@ -2,19 +2,25 @@ package io.github.abhik9.zzztimer.ui
 
 import android.app.Application
 import android.app.UiModeManager
+import android.net.Uri
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.S
+import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.StartResult
 import io.github.abhik9.zzztimer.core.Timer
+import io.github.abhik9.zzztimer.diagnostics.DiagnosticsReport
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.settings.ThemeMode
 import io.github.abhik9.zzztimer.settings.UserSettings
 import io.github.abhik9.zzztimer.sleepTimer
+import io.github.abhik9.zzztimer.system.toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
@@ -26,6 +32,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,17 +47,22 @@ data class MainUiState(
     val missingRequirement: Requirement? = null,
     /** Material You colors extracted from the wallpaper, since Android 12. */
     val dynamicColorAvailable: Boolean = SDK_INT >= S,
+    /** Size of the recorded diagnostics log, in bytes. */
+    val diagnosticsLogBytes: Long = 0,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private companion object {
+        const val TAG = "MainViewModel"
+
         /** The timer can change behind our back (notification actions, timeout, tile, automation). */
         val POLL_INTERVAL = 1.seconds
     }
 
     private val settings = SettingsStore.from(application)
     private val timer = application.sleepTimer()
+    private val diagnostics = application.diagnostics
 
     private val refreshes = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val ticks = merge(
@@ -70,6 +84,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         timer = timer.current(),
         settings = userSettings,
         missingRequirement = timer.missingRequirement(),
+        diagnosticsLogBytes = diagnostics.size(),
     )
 
     /** Re-reads the timer and the permissions right away, e.g. when coming back from the system settings. */
@@ -107,6 +122,47 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setAutomationEnabled(enabled: Boolean) {
         settings.automationEnabled = enabled
+    }
+
+    fun setDiagnosticsEnabled(enabled: Boolean) {
+        // Recorded while enabled, so that both ends of a recording session are in the log.
+        if (enabled) {
+            settings.diagnosticsEnabled = true
+            diagnostics.record { "diagnostics: enabled" }
+        } else {
+            diagnostics.record { "diagnostics: disabled" }
+            settings.diagnosticsEnabled = false
+        }
+    }
+
+    fun clearDiagnostics() {
+        viewModelScope.launch(Dispatchers.IO) {
+            diagnostics.clear()
+            refresh()
+        }
+    }
+
+    /** Writes the device details and the diagnostics log to [destination], a document picked by the user. */
+    fun exportDiagnostics(destination: Uri) {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val exported = withContext(Dispatchers.IO) {
+                try {
+                    val header = DiagnosticsReport.header(app)
+                    checkNotNull(app.contentResolver.openOutputStream(destination, "wt")) { "No output stream" }.use {
+                        diagnostics.export(it, header)
+                    }
+                    true
+                } catch (e: IOException) {
+                    Log.w(TAG, "Diagnostics export failed", e)
+                    false
+                } catch (e: RuntimeException) {
+                    Log.w(TAG, "Diagnostics export failed", e)
+                    false
+                }
+            }
+            app.toast(if (exported) R.string.diagnostics_exported else R.string.diagnostics_export_failed)
+        }
     }
 }
 

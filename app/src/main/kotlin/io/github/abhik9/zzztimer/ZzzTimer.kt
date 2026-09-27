@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.SystemClock
 import io.github.abhik9.zzztimer.core.DeviceClock
 import io.github.abhik9.zzztimer.core.SleepTimer
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.tile.requestTileUpdate
 import io.github.abhik9.zzztimer.timer.AndroidSleepTrigger
@@ -31,5 +32,6 @@ fun Context.sleepTimer(): SleepTimer {
         clock = SystemDeviceClock,
         settings = settings::timerSettings,
         onChange = context::requestTileUpdate,
+        log = context.diagnostics,
     )
 }

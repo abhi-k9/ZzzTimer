@@ -8,6 +8,8 @@ ZzzTimer is an open source app, provided free of charge and as is.
 - It contains no analytics, advertising, or crash reporting library.
 - Your settings (durations, theme, automation preference) are stored locally on your device, and are excluded from
   backups and device transfers. Uninstalling the app deletes them.
+- When you turn on diagnostics, the app keeps a technical log of the timer's activity on your device (no personal
+  data). It is excluded from backups, never sent anywhere, and only leaves your device if you export it yourself.
 
 Permissions the app requests, and why:
 

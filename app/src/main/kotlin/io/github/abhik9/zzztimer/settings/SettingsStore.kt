@@ -20,6 +20,7 @@ data class UserSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val automationEnabled: Boolean = true,
+    val diagnosticsEnabled: Boolean = false,
 ) {
     fun minutes(setting: DurationSetting): Int = durations[setting] ?: setting.defaultMinutes
 }
@@ -36,6 +37,7 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         private const val KEY_THEME = "theme"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AUTOMATION = "automation"
+        private const val KEY_DIAGNOSTICS = "diagnostics"
 
         private val DurationSetting.key: String
             get() = when (this) {
@@ -67,11 +69,17 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         get() = read(KEY_AUTOMATION, true, prefs::getBoolean)
         set(value) = prefs.edit { putBoolean(KEY_AUTOMATION, value) }
 
+    /** Whether the [io.github.abhik9.zzztimer.diagnostics.DiagnosticsLog] is recording. */
+    var diagnosticsEnabled: Boolean
+        get() = read(KEY_DIAGNOSTICS, false, prefs::getBoolean)
+        set(value) = prefs.edit { putBoolean(KEY_DIAGNOSTICS, value) }
+
     fun snapshot() = UserSettings(
         durations = DurationSetting.entries.associateWith(::minutes),
         themeMode = themeMode,
         dynamicColor = dynamicColor,
         automationEnabled = automationEnabled,
+        diagnosticsEnabled = diagnosticsEnabled,
     )
 
     /** Emits the current settings, then every change. */

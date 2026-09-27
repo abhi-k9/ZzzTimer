@@ -37,6 +37,7 @@ class SleepTimer(
     private val settings: () -> TimerSettings,
     /** Called after every change of the timer, e.g. to refresh the Quick Settings tile. */
     private val onChange: () -> Unit = {},
+    private val log: EventLog = EventLog.NONE,
 ) {
 
     companion object {
@@ -61,7 +62,11 @@ class SleepTimer(
      * Starts a timer of [duration] (capped to [MAX_TIMER_DURATION]), replacing the running one.
      * A non positive [duration] stops the timer.
      */
-    fun start(duration: Duration = settings().initial): StartResult {
+    fun start(duration: Duration = settings().initial): StartResult = doStart(duration).also { result ->
+        log.record { "start($duration): $result" }
+    }
+
+    private fun doStart(duration: Duration): StartResult {
         if (!duration.isPositive()) {
             stop()
             return StartResult.Stopped
@@ -78,6 +83,7 @@ class SleepTimer(
     }
 
     fun stop() {
+        log.record { "stop" }
         // Removing the display does not signal the deadline: the trigger must be disarmed explicitly.
         display.hide()
         trigger.disarm()
@@ -98,7 +104,9 @@ class SleepTimer(
      * @return `null` when there is no running timer, or it is already expiring.
      */
     fun adjust(delta: Duration, mayEnd: Boolean = true): StartResult? {
-        val remaining = remaining() ?: return null
+        val remaining = remaining()
+        log.record { "adjust($delta, mayEnd=$mayEnd): remaining=$remaining" }
+        if (remaining == null) return null
         // The deadline has been reached, but not signaled yet: restarting or stopping now would skip the sleep.
         if (!remaining.isPositive()) return null
         val next = (remaining + delta).coerceAtMost(MAX_TIMER_DURATION)
@@ -122,16 +130,19 @@ class SleepTimer(
      * @param deadline the [Timer.deadline] the signal was scheduled for, `0` if unknown.
      */
     fun onDeadline(deadline: Long): DeadlineOutcome {
-        val early = deadline > 0 && clock.elapsedMillis() < deadline - DEADLINE_TOLERANCE.inWholeMilliseconds
+        val now = clock.elapsedMillis()
+        val early = deadline > 0 && now < deadline - DEADLINE_TOLERANCE.inWholeMilliseconds
+        val current = current()
+        log.record { "deadline($deadline) at $now: early=$early, current=$current" }
         if (!early) {
             // The display normally removes itself at the deadline, but the trigger may fire first: never leave a timer
             // displayed once it has ended.
-            if (deadline > 0 && current()?.deadline == deadline) display.hide()
+            if (deadline > 0 && current?.deadline == deadline) display.hide()
             onChange()
             return DeadlineOutcome.SLEEP
         }
         // Dismissed by the user: cancel the timer, unless a new one has been started since (which re-armed the trigger).
-        if (current() == null) {
+        if (current == null) {
             trigger.disarm()
             onChange()
         }
