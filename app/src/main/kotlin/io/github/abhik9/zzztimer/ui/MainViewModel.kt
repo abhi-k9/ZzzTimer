@@ -5,7 +5,6 @@ import android.app.UiModeManager
 import android.net.Uri
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.S
-import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,7 +22,9 @@ import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.system.toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,10 +32,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.IOException
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -51,11 +52,9 @@ data class MainUiState(
     val diagnosticsLogBytes: Long = 0,
 )
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+class MainViewModel(application: Application) : AndroidViewModel(application), MainActions {
 
     private companion object {
-        const val TAG = "MainViewModel"
-
         /** The timer can change behind our back (notification actions, timeout, tile, automation). */
         val POLL_INTERVAL = 1.seconds
     }
@@ -80,6 +79,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds.inWholeMilliseconds), uiState(settings.snapshot()))
 
+    private val blockedRequirements = Channel<Requirement>(Channel.CONFLATED)
+
+    /** What the user must resolve before a requested operation can run. */
+    val blocked: Flow<Requirement> = blockedRequirements.receiveAsFlow()
+
     private fun uiState(userSettings: UserSettings) = MainUiState(
         timer = timer.current(),
         settings = userSettings,
@@ -92,23 +96,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshes.tryEmit(Unit)
     }
 
-    private inline fun <T> update(operation: () -> T): T = operation().also { refresh() }
+    private inline fun perform(operation: () -> StartResult?) {
+        val result = operation()
+        if (result is StartResult.Blocked) blockedRequirements.trySend(result.requirement)
+        refresh()
+    }
 
-    fun start(minutes: Int): StartResult = update { timer.start(minutes.minutes) }
+    override fun start(minutes: Int) = perform { timer.start(minutes.minutes) }
 
-    fun stop() = update { timer.stop() }
+    override fun stop() = perform {
+        timer.stop()
+        null
+    }
 
-    fun extend(): StartResult? = update { timer.extend() }
+    override fun extend() = perform(timer::extend)
 
-    fun reduce(): StartResult? = update { timer.reduce() }
+    override fun reduce() = perform(timer::reduce)
 
-    fun setMinutes(setting: DurationSetting, minutes: Int): StartResult? = update {
+    override fun setMinutes(setting: DurationSetting, minutes: Int) = perform {
         settings.setMinutes(setting, minutes)
         // Refresh the notification actions ("+N", "−N") of a running timer.
         if (setting != DurationSetting.INITIAL) timer.refresh() else null
     }
 
-    fun setThemeMode(mode: ThemeMode) {
+    override fun setThemeMode(mode: ThemeMode) {
         settings.themeMode = mode
         // Since Android 12 the system persists a per-app night mode, applied to every window (which are recreated).
         if (SDK_INT >= S) {
@@ -116,26 +127,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setDynamicColor(enabled: Boolean) {
+    override fun setDynamicColor(enabled: Boolean) {
         settings.dynamicColor = enabled
     }
 
-    fun setAutomationEnabled(enabled: Boolean) {
+    override fun setAutomationEnabled(enabled: Boolean) {
         settings.automationEnabled = enabled
     }
 
-    fun setDiagnosticsEnabled(enabled: Boolean) {
+    override fun setDiagnosticsEnabled(enabled: Boolean) {
         // Recorded while enabled, so that both ends of a recording session are in the log.
-        if (enabled) {
-            settings.diagnosticsEnabled = true
-            diagnostics.record { "diagnostics: enabled" }
-        } else {
-            diagnostics.record { "diagnostics: disabled" }
-            settings.diagnosticsEnabled = false
-        }
+        if (enabled) settings.diagnosticsEnabled = true
+        diagnostics.record { "diagnostics: enabled=$enabled" }
+        if (!enabled) settings.diagnosticsEnabled = false
     }
 
-    fun clearDiagnostics() {
+    override fun clearDiagnostics() {
         viewModelScope.launch(Dispatchers.IO) {
             diagnostics.clear()
             refresh()
@@ -146,20 +153,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun exportDiagnostics(destination: Uri) {
         viewModelScope.launch {
             val app = getApplication<Application>()
+            // No suspension point inside: catching everything can't swallow a cancellation.
             val exported = withContext(Dispatchers.IO) {
-                try {
-                    val header = DiagnosticsReport.header(app)
-                    checkNotNull(app.contentResolver.openOutputStream(destination, "wt")) { "No output stream" }.use {
-                        diagnostics.export(it, header)
-                    }
-                    true
-                } catch (e: IOException) {
-                    Log.w(TAG, "Diagnostics export failed", e)
-                    false
-                } catch (e: RuntimeException) {
-                    Log.w(TAG, "Diagnostics export failed", e)
-                    false
-                }
+                runCatching {
+                    val output = checkNotNull(app.contentResolver.openOutputStream(destination, "wt")) { "No output stream" }
+                    output.use { diagnostics.export(it, DiagnosticsReport.header(app)) }
+                }.onFailure { diagnostics.warn("diagnostics: export failed", it) }.isSuccess
             }
             app.toast(if (exported) R.string.diagnostics_exported else R.string.diagnostics_export_failed)
         }

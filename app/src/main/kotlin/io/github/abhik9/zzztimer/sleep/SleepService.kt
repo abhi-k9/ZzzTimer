@@ -14,7 +14,6 @@ import android.media.AudioManager
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 import android.os.IBinder
-import android.util.Log
 import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DeadlineOutcome
@@ -38,7 +37,6 @@ import kotlinx.coroutines.withContext
 class SleepService : Service() {
 
     companion object {
-        private const val TAG = "SleepService"
         private const val NOTIFICATION_ID = 2
         private const val EXTRA_FOREGROUND = "io.github.abhik9.zzztimer.extra.FOREGROUND"
 
@@ -130,7 +128,6 @@ class SleepService : Service() {
 
     private fun enterForeground() {
         if (SDK_INT < UPSIDE_DOWN_CAKE) return
-        TimerNotification.createChannel(this)
         val notification = Notification.Builder(this, TimerNotification.CHANNEL_ID)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setSmallIcon(R.drawable.ic_tile)
@@ -143,8 +140,7 @@ class SleepService : Service() {
             startForeground(NOTIFICATION_ID, notification, FOREGROUND_SERVICE_TYPE_SHORT_SERVICE)
         } catch (e: ForegroundServiceStartNotAllowedException) {
             // Still try to pause playback: it does not require a foreground service.
-            Log.w(TAG, "Foreground service not allowed", e)
-            diagnostics.record { "service: foreground not allowed: $e" }
+            diagnostics.warn("service: foreground not allowed", e)
         }
     }
 }

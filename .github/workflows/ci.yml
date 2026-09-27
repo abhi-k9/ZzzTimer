@@ -35,33 +35,13 @@ jobs:
           advanced-security: false
           annotations: true
 
-  ktlint:
-    name: Kotlin style
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      KTLINT_VERSION: 1.8.0
-      KTLINT_SHA256: 369ad2b789f95a011f807e1fcb690ccef80bd7cd014fd139e73ae82dcc0baeab
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: 25
-
-      - name: ktlint
-        run: |
-          curl -sSfL -o ktlint.jar "https://repo1.maven.org/maven2/com/pinterest/ktlint/ktlint-cli/$KTLINT_VERSION/ktlint-cli-$KTLINT_VERSION-all.jar"
-          echo "$KTLINT_SHA256  ktlint.jar" | sha256sum --check --strict
-          java -jar ktlint.jar --relative "**/*.kt" "**/*.kts"
-
   build:
     name: Build, test & lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      KTLINT_VERSION: 1.8.0
+      KTLINT_SHA256: 369ad2b789f95a011f807e1fcb690ccef80bd7cd014fd139e73ae82dcc0baeab
 
     steps:
       # Actions are pinned by commit SHA; Dependabot keeps them up to date.
@@ -74,6 +54,12 @@ jobs:
           distribution: temurin
           java-version: 25
 
+      - name: Kotlin style
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/ktlint.jar" "https://repo1.maven.org/maven2/com/pinterest/ktlint/ktlint-cli/$KTLINT_VERSION/ktlint-cli-$KTLINT_VERSION-all.jar"
+          echo "$KTLINT_SHA256  $RUNNER_TEMP/ktlint.jar" | sha256sum --check --strict
+          java -jar "$RUNNER_TEMP/ktlint.jar" --relative "**/*.kt" "**/*.kts"
+
       # Also validates the Gradle wrapper checksum.
       - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
@@ -81,10 +67,9 @@ jobs:
           cache-provider: basic
 
       - name: Build, test & lint
-        run: ./gradlew assembleDebug assembleRelease :core:test lint --stacktrace --warning-mode all
+        run: ./gradlew assembleDebug assembleRelease test lint --stacktrace --warning-mode all
 
       - name: Upload debug APK
-        if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: app-debug.apk

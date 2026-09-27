@@ -6,7 +6,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.CINNAMON_BUN
-import android.util.Log
 import androidx.annotation.RequiresApi
 import io.github.abhik9.zzztimer.core.SleepTrigger
 import io.github.abhik9.zzztimer.core.Timer
@@ -66,8 +65,7 @@ private class ExactAlarmTrigger(private val context: Context) : AndroidSleepTrig
             true
         } catch (e: SecurityException) {
             // The permission has been revoked in the meantime.
-            Log.w(TAG, "Exact alarm denied", e)
-            context.diagnostics.record { "alarm: denied: $e" }
+            context.diagnostics.warn("alarm: denied", e)
             false
         }
     }
@@ -79,8 +77,4 @@ private class ExactAlarmTrigger(private val context: Context) : AndroidSleepTrig
     }
 
     override fun deleteIntent(timer: Timer) = TimerActionReceiver.dismissIntent(context, timer.deadline)
-
-    private companion object {
-        const val TAG = "ExactAlarmTrigger"
-    }
 }

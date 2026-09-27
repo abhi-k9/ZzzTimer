@@ -39,7 +39,7 @@ internal class TimerNotification(
         private const val NOTIFICATION_TAG = "timer"
         private const val ID = 1
 
-        /** Idempotent: the channel is only created once, and later calls never override the user's choices. */
+        /** Called at every app start: creating an existing channel only updates its texts, never the user's choices. */
         fun createChannel(context: Context) {
             val channel = NotificationChannel(CHANNEL_ID, context.getString(R.string.notification_channel_name), IMPORTANCE_LOW).apply {
                 description = context.getString(R.string.notification_channel_description)
@@ -63,7 +63,6 @@ internal class TimerNotification(
     }
 
     override fun show(timer: Timer, timeout: Duration) {
-        createChannel(context)
         manager.notify(NOTIFICATION_TAG, ID, build(timer, timeout))
     }
 
@@ -80,7 +79,7 @@ internal class TimerNotification(
             .setSmallIcon(R.drawable.ic_tile)
             // A title is required for Live Updates: https://developer.android.com/develop/ui/views/notifications/live-update
             .setContentTitle(context.getString(R.string.app_name))
-            .setSubText(context.getString(R.string.notification_ends_at, DateFormat.getTimeFormat(context).format(Date(timer.endsAt))))
+            .setSubText(context.getString(R.string.ends_at, DateFormat.getTimeFormat(context).format(Date(timer.endsAt))))
             .setShowWhen(true)
             .setWhen(timer.endsAt)
             .setUsesChronometer(true)

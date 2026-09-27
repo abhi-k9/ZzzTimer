@@ -6,15 +6,13 @@ import android.content.Intent
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.S
 import android.provider.Settings
-import android.util.Log
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.core.net.toUri
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.StartResult
-
-private const val TAG = "System"
+import io.github.abhik9.zzztimer.diagnostics.diagnostics
 
 /** Where the user can resolve a [Requirement]. */
 fun Context.settingsIntent(requirement: Requirement): Intent = when (requirement) {
@@ -28,7 +26,7 @@ fun Context.settingsIntent(requirement: Requirement): Intent = when (requirement
 }
 
 /** Fallback for OEM builds missing a specific settings screen. */
-fun Context.appDetailsIntent(): Intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())
+private fun Context.appDetailsIntent(): Intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())
 
 /**
  * Starts [intent], or the app details settings when no activity handles it.
@@ -37,21 +35,28 @@ fun Context.startSettings(intent: Intent, start: (Intent) -> Unit = { startActiv
     try {
         start(intent)
     } catch (e: ActivityNotFoundException) {
-        Log.w(TAG, "No activity for $intent", e)
-        runCatching { start(appDetailsIntent()) }.onFailure { Log.w(TAG, "No app details settings", it) }
+        diagnostics.warn("settings: no activity for $intent", e)
+        runCatching { start(appDetailsIntent()) }.onFailure { diagnostics.warn("settings: no app details", it) }
     }
 }
 
 @get:StringRes
-val Requirement.message: Int
+val Requirement.title: Int
     get() = when (this) {
-        Requirement.NOTIFICATIONS -> R.string.requirement_notifications_toast
-        Requirement.EXACT_ALARMS -> R.string.requirement_alarms_toast
+        Requirement.NOTIFICATIONS -> R.string.requirement_notifications_title
+        Requirement.EXACT_ALARMS -> R.string.requirement_alarms_title
+    }
+
+@get:StringRes
+val Requirement.explanation: Int
+    get() = when (this) {
+        Requirement.NOTIFICATIONS -> R.string.requirement_notifications_explanation
+        Requirement.EXACT_ALARMS -> R.string.requirement_alarms_explanation
     }
 
 fun Context.toast(@StringRes message: Int) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()
 
 /** Tells the user why a timer operation could not run, when it was [StartResult.Blocked]. */
 fun Context.reportBlocked(result: StartResult?) {
-    if (result is StartResult.Blocked) toast(result.requirement.message)
+    if (result is StartResult.Blocked) toast(result.requirement.title)
 }

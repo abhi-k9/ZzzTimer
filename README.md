@@ -2,182 +2,102 @@
 
 [![CI](https://github.com/abhi-k9/ZzzTimer/actions/workflows/ci.yml/badge.svg)](https://github.com/abhi-k9/ZzzTimer/actions/workflows/ci.yml)
 
-ZzzTimer helps you fall asleep while listening to music or podcasts.
-When the timer ends, the media volume is gradually lowered, playback is paused, then the volume is restored.
+ZzzTimer helps you fall asleep while listening to music or podcasts: when the timer ends, the media volume is gradually
+lowered, playback is paused, then the volume is restored.
 
-It is a from-scratch rewrite of [Sleep Timer](https://github.com/SimonMarquis/SleepTimer) by Simon Marquis (see [NOTICE](NOTICE)).
-
-Download the APK from the [latest release](https://github.com/abhi-k9/ZzzTimer/releases/latest), and see
-[Verifying a download](#verifying-a-download).
+Download it from the [latest release](https://github.com/abhi-k9/ZzzTimer/releases/latest) (see
+[verifying a download](#verifying-a-download)). It is a rewrite of [Sleep Timer](https://github.com/SimonMarquis/SleepTimer)
+by Simon Marquis, see [NOTICE](NOTICE).
 
 ## Usage
 
-1. Add the ZzzTimer tile to the Quick Settings panel.
-2. Tap the tile to start a timer of the default duration, tap it again to stop it.
-3. Extend, reduce or stop the timer from its notification. Dismissing the notification (possible since Android 14) also
-   stops the timer.
-4. Open the app (launcher icon, notification tap, or long press on the tile) to:
-   - start a timer of an exact duration, or pick a preset,
-   - configure the default duration and the `+` / `−` steps,
-   - choose the theme (System, Light, Dark) and Material You dynamic colors,
-   - allow or forbid other apps to control the timer.
+- **Quick Settings tile**: tap to start a timer of the default duration, tap again to stop it.
+- **Notification**: extend, reduce or stop the timer. Dismissing it (possible since Android 14) stops the timer.
+- **App** (launcher, notification tap, or long press on the tile): start a timer of any duration, configure the default
+  duration and the `+` / `−` steps, the theme, automation and diagnostics.
 
 ## Automation
 
-Tools like [Tasker](https://tasker.joaoapps.com/) or `adb` can control the timer with explicit broadcasts.
+Tools like [Tasker](https://tasker.joaoapps.com/) or `adb` can control the timer with explicit broadcasts to
+`io.github.abhik9.zzztimer/.automation.AutomationReceiver` (`io.github.abhik9.zzztimer.debug/…` for debug builds).
 This can be turned off in the app settings.
 
-| Action                                     | Effect                                                         |
-|--------------------------------------------|----------------------------------------------------------------|
-| `io.github.abhik9.zzztimer.action.START`     | Starts a timer: of `duration` seconds, or the default duration |
-| `io.github.abhik9.zzztimer.action.UPDATE`    | Adds `duration` seconds (can be negative) to the running timer |
-| `io.github.abhik9.zzztimer.action.INCREMENT` | Extends the running timer by the configured step               |
-| `io.github.abhik9.zzztimer.action.DECREMENT` | Reduces the running timer by the configured step               |
-| `io.github.abhik9.zzztimer.action.TOGGLE`    | Starts the default timer, or stops the running one             |
-| `io.github.abhik9.zzztimer.action.STOP`      | Stops the running timer                                        |
+| Action (`io.github.abhik9.zzztimer.action.…`) | Effect                                                              |
+|-----------------------------------------------|---------------------------------------------------------------------|
+| `START`                                       | Starts a timer of `duration` seconds, or of the default duration    |
+| `UPDATE`                                      | Adds `duration` seconds (can be negative) to the running timer      |
+| `INCREMENT` / `DECREMENT`                     | Extends / reduces the running timer by the configured step          |
+| `TOGGLE`                                      | Starts the default timer, or stops the running one                  |
+| `STOP`                                        | Stops the running timer                                             |
 
-`duration` is a `long` or `int` extra, in seconds, capped to 24 hours. For example:
+`duration` is a `long` or `int` extra, capped to 24 hours:
 
 ```bash
-# Start a 10 minutes timer
 adb shell am broadcast -n io.github.abhik9.zzztimer/.automation.AutomationReceiver \
   -a io.github.abhik9.zzztimer.action.START --el duration 600
-
-# Remove 1 minute
-adb shell am broadcast -n io.github.abhik9.zzztimer/.automation.AutomationReceiver \
-  -a io.github.abhik9.zzztimer.action.UPDATE --el duration -60
-
-# Stop
-adb shell am broadcast -n io.github.abhik9.zzztimer/.automation.AutomationReceiver \
-  -a io.github.abhik9.zzztimer.action.STOP
 ```
-
-Debug builds use the `io.github.abhik9.zzztimer.debug` package: adjust the component name (`-n`) accordingly.
 
 ## Diagnostics
 
-When something doesn't behave as expected, turn on **Record diagnostics** in the app settings, reproduce the issue,
-then use **Export log** to save it to a file.
-
-- The log records what the timer does and why: timers started, extended or stopped, alarms, deadlines, dismissals, each
-  step of the fade out, the sleep service, automation broadcasts, permission changes, and crashes.
-- The export starts with a snapshot of the app and device state: versions, permissions, battery optimizations, standby
-  bucket, settings and the running timer.
-- It contains no personal data, stays in the app's private storage (excluded from backups), is capped at about 512 KB,
-  and only leaves the device when you export it. **Clear log** deletes it.
-- Nothing is recorded while the setting is off, which is the default.
+To investigate an issue, turn on **Record diagnostics** in the app settings, reproduce it, then **Export log** to a file.
+The log records what the timer does and why (timer operations, alarms, deadlines, the fade out, the sleep service,
+automation, permissions, crashes), and the export starts with a snapshot of the app and device state. It is off by
+default, capped at about 512 KB, and never leaves the device unless exported (see the [privacy policy](PRIVACY.md)).
 
 ## How it works
 
-The ongoing notification is the source of truth of the timer: the timer exists only while its notification is posted,
-and the system removes the notification when the timer ends
-([`setTimeoutAfter`](https://developer.android.com/reference/android/app/Notification.Builder#setTimeoutAfter(long))).
-Nothing is persisted, and there is nothing to clean up after a reboot.
+- The ongoing notification is the timer's source of truth: the timer exists only while it is posted, and the system
+  removes it at the deadline ([`setTimeoutAfter`](https://developer.android.com/reference/android/app/Notification.Builder#setTimeoutAfter(long))).
+  Nothing is persisted, so there is nothing to clean up after a reboot.
+- The deadline is tracked on the monotonic `elapsedRealtime` clock: changing the time or time zone doesn't affect it.
+- When the timer ends, a service fades out and pauses playback. Up to Android 16, the notification
+  [`deleteIntent`](https://developer.android.com/reference/android/app/Notification.Builder#setDeleteIntent(android.app.PendingIntent))
+  starts it. Since Android 17, [background audio hardening](https://developer.android.com/about/versions/17/changes/bg-audio)
+  requires a foreground service, which an exact alarm starts instead (hence the *Alarms & reminders* permission).
+- A signal received well before the deadline means the notification was dismissed: the timer is cancelled instead.
 
-The end of the timer is tracked on the monotonic `elapsedRealtime` clock, stored in the notification extras, so changing
-the time or the time zone doesn't affect a running timer.
-
-When the timer ends:
-
-- **Up to Android 16**, the notification [`deleteIntent`](https://developer.android.com/reference/android/app/Notification.Builder#setDeleteIntent(android.app.PendingIntent))
-  starts the sleep service.
-- **Since Android 17**, [background audio hardening](https://developer.android.com/about/versions/17/changes/bg-audio)
-  requires a foreground service to lower the volume, and a `deleteIntent` can't start one. An
-  [exact alarm](https://developer.android.com/reference/android/app/AlarmManager#setExactAndAllowWhileIdle(int,%20long,%20android.app.PendingIntent))
-  starts a `shortService` foreground service instead, which requires the *Alarms & reminders* permission.
-
-In both cases, a signal received well before the deadline means the user dismissed the notification: the timer is
-cancelled instead.
-
-Since Android 16 QPR2, the notification is displayed as a
-[Live Update](https://developer.android.com/develop/ui/views/notifications/live-update).
-
-## Project structure
-
-| Module  | Content                                                                                                      |
-|---------|--------------------------------------------------------------------------------------------------------------|
-| `:core` | Pure Kotlin: the timer logic (`SleepTimer`), the fade-out routine (`SleepRoutine`), settings and time helpers. Unit tested on the JVM. |
-| `:app`  | Android adapters (notification, alarm, audio, tile, receivers) and the Jetpack Compose UI.                   |
-
-`:core` defines small interfaces (`TimerDisplay`, `SleepTrigger`, `MediaAudio`, `DeviceClock`) that `:app`
-implements with the platform APIs.
+The `:core` module holds the logic in pure Kotlin, unit tested on the JVM: `SleepTimer`, the fade out (`SleepRoutine`)
+and the automation API. It defines small interfaces (`TimerDisplay`, `SleepTrigger`, `MediaAudio`, `DeviceClock`,
+`EventLog`) that `:app` implements with the platform APIs, next to the Jetpack Compose UI.
 
 ## Building
 
-Requirements: JDK 17 or newer, and the Android SDK (API 37).
+Requires JDK 17+ and the Android SDK (API 37). `./gradlew assembleDebug test lint` builds, tests and lints (lint and
+Kotlin warnings are errors); CI also runs [ktlint](https://pinterest.github.io/ktlint/) and
+[zizmor](https://docs.zizmor.sh/).
 
-```bash
-./gradlew assembleDebug    # debug APK
-./gradlew :core:test       # unit tests
-./gradlew lint             # Android lint (warnings are errors)
-```
+Release builds are signed only when a signing configuration is provided. Never commit keystores or passwords:
 
-Release builds are minified. They are signed only when a signing configuration is provided, as Gradle properties
-(e.g. in `~/.gradle/gradle.properties`) or environment variables — never commit keystores or passwords:
-
-| Gradle property                  | Environment variable                 |
-|----------------------------------|--------------------------------------|
-| `zzztimer.signing.storeFile`     | `ZZZTIMER_SIGNING_STORE_FILE`        |
-| `zzztimer.signing.storePassword` | `ZZZTIMER_SIGNING_STORE_PASSWORD`    |
-| `zzztimer.signing.keyAlias`      | `ZZZTIMER_SIGNING_KEY_ALIAS`         |
-| `zzztimer.signing.keyPassword`   | `ZZZTIMER_SIGNING_KEY_PASSWORD`      |
+| Gradle property (`zzztimer.signing.…`) | Environment variable            | Release workflow secret                          |
+|----------------------------------------|---------------------------------|--------------------------------------------------|
+| `storeFile`                            | `ZZZTIMER_SIGNING_STORE_FILE`   | `ZZZTIMER_SIGNING_KEYSTORE_BASE64` (base64 file) |
+| `storePassword`                        | `ZZZTIMER_SIGNING_STORE_PASSWORD` | `ZZZTIMER_SIGNING_STORE_PASSWORD`              |
+| `keyAlias`                             | `ZZZTIMER_SIGNING_KEY_ALIAS`    | `ZZZTIMER_SIGNING_KEY_ALIAS`                     |
+| `keyPassword`                          | `ZZZTIMER_SIGNING_KEY_PASSWORD` | `ZZZTIMER_SIGNING_KEY_PASSWORD`                  |
 
 ## Releasing
 
-1. Bump the version in `app/build.gradle.kts` on `main`.
-2. Run the [release workflow](.github/workflows/release.yml) on `main` (Actions → Release → Run workflow), which creates
-   the `vX.Y.Z` tag. Alternatively, push that tag yourself: it must point to a commit of `main`.
+Bump the version in `app/build.gradle.kts` on `main`, then run the [release workflow](.github/workflows/release.yml) on
+`main` (Actions → Release → Run workflow). It creates the `vX.Y.Z` tag, builds from scratch, tests, lints, signs, checks
+the signing certificate, attests the build provenance, and publishes the APK with its checksum. Pushing a tag that points
+to `main` works too.
 
-The workflow builds the app from scratch (no shared build cache), runs the tests and lint, signs the APK, checks that it
-is signed with the expected certificate, attests its build provenance, and publishes it with its SHA-256 checksum as a
-GitHub Release. It runs in the `release` environment: protection rules such as required reviewers can be added to it in
-Settings → Environments.
-
-It requires these repository (or `release` environment) secrets, in Settings → Secrets and variables → Actions:
-
-| Secret                              | Value                                   |
-|-------------------------------------|-----------------------------------------|
-| `ZZZTIMER_SIGNING_KEYSTORE_BASE64`  | The release keystore, base64 encoded    |
-| `ZZZTIMER_SIGNING_STORE_PASSWORD`   | The keystore password                   |
-| `ZZZTIMER_SIGNING_KEY_ALIAS`        | The key alias                           |
-| `ZZZTIMER_SIGNING_KEY_PASSWORD`     | The key password                        |
-
-A keystore can be created once with `keytool`. Keep it and its passwords safe: every future update must be signed with
-the same key. When the key changes, update `SIGNING_CERT_SHA256` in the release workflow.
+The workflow runs in the `release` environment, which can hold the secrets and protection rules (Settings →
+Environments). The keystore is created once, and every update must be signed with it; if it ever changes, update
+`SIGNING_CERT_SHA256` in the workflow:
 
 ```bash
 keytool -genkeypair -keystore zzztimer-release.jks -alias zzztimer -keyalg RSA -keysize 4096 -validity 10000
-base64 -w 0 zzztimer-release.jks   # value of ZZZTIMER_SIGNING_KEYSTORE_BASE64 (macOS: base64 -i zzztimer-release.jks)
+base64 -w 0 zzztimer-release.jks   # macOS: base64 -i zzztimer-release.jks
 ```
 
 ### Verifying a download
 
-- The APK is signed with this certificate (SHA-256), which tools like `apksigner verify --print-certs`, AppVerifier or
-  Obtainium can check:
+- Signing certificate (SHA-256), checked by `apksigner verify --print-certs`, AppVerifier or Obtainium:
   `95:E5:0C:F0:03:27:57:2F:5E:89:C2:25:AF:ED:42:FF:1A:06:3E:F1:2E:3E:ED:07:5F:F3:AB:4B:67:9C:F0:08`
-- It was built by this repository's release workflow:
-  ```bash
-  gh attestation verify ZzzTimer-vX.Y.Z.apk --repo abhi-k9/ZzzTimer
-  ```
-- Its SHA-256 checksum is published next to it: `sha256sum --check ZzzTimer-vX.Y.Z.apk.sha256`
-
-## Privacy
-
-ZzzTimer has no Internet permission and collects no data, see the [privacy policy](PRIVACY.md).
+- Build provenance: `gh attestation verify ZzzTimer-vX.Y.Z.apk --repo abhi-k9/ZzzTimer`
+- Checksum: `sha256sum --check ZzzTimer-vX.Y.Z.apk.sha256`
 
 ## License
 
-    Copyright 2020 Simon Marquis
-    Copyright 2026 abhi-k9
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+[Apache License 2.0](LICENSE). No Internet permission, no data collected: see the [privacy policy](PRIVACY.md).

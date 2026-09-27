@@ -8,7 +8,6 @@
     <!-- Notification -->
     <string name="notification_channel_name">Running timer</string>
     <string name="notification_channel_description">Shows the remaining time, and lets you extend, reduce or stop the timer.</string>
-    <string name="notification_ends_at">Ends at %1$s</string>
     <string name="notification_sleeping">Pausing playback…</string>
 
     <!-- Timer actions -->
@@ -23,7 +22,7 @@
     <string name="timer_idle_body">Start one below, or from the Quick Settings tile.</string>
     <string name="timer_remaining">Time left</string>
     <string name="timer_remaining_description">%1$s left</string>
-    <string name="timer_ends_at">Ends at %1$s</string>
+    <string name="ends_at">Ends at %1$s</string>
     <string name="start_timer_title">Start a timer</string>
     <string name="start_timer_title_running">Change the timer</string>
     <string name="unit_minutes">min</string>
@@ -59,11 +58,9 @@
     <string name="diagnostics_export_failed">Could not export the diagnostics</string>
 
     <!-- Missing permissions -->
-    <string name="warning_notifications_title">Notifications are off</string>
-    <string name="warning_notifications_body">The timer runs as a notification: it can’t start without it.</string>
-    <string name="warning_alarms_title">Alarms &amp; reminders are off</string>
-    <string name="warning_alarms_body">Since Android 17, this permission is required to pause playback on time.</string>
+    <string name="requirement_notifications_title">Notifications are off</string>
+    <string name="requirement_notifications_explanation">The timer runs as a notification: it can’t start without it.</string>
+    <string name="requirement_alarms_title">Alarms &amp; reminders are off</string>
+    <string name="requirement_alarms_explanation">Since Android 17, this permission is required to pause playback on time.</string>
     <string name="warning_action">Allow</string>
-    <string name="requirement_notifications_toast">ZzzTimer needs the Notifications permission.</string>
-    <string name="requirement_alarms_toast">ZzzTimer needs the Alarms &amp; reminders permission.</string>
 </resources>

@@ -12,7 +12,6 @@ import android.graphics.Color
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.TIRAMISU
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -20,12 +19,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.viewModels
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.abhik9.zzztimer.R
-import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.Requirement
-import io.github.abhik9.zzztimer.core.StartResult
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.settings.ThemeMode
@@ -38,12 +36,12 @@ import java.time.LocalDate
 /**
  * Starts a timer of an exact duration, controls the running one, and holds the settings.
  * Opened from the launcher, the notification, or by long pressing the Quick Settings tile.
+ *
+ * Only handles what requires an activity: permission prompts, the export destination picker and the system bars.
  */
 class MainActivity : ComponentActivity() {
 
     companion object {
-        private const val TAG = "MainActivity"
-
         fun pendingIntent(context: Context): PendingIntent =
             PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
     }
@@ -57,38 +55,8 @@ class MainActivity : ComponentActivity() {
         if (!granted) openSettings(Requirement.NOTIFICATIONS)
     }
 
-    private val exportDiagnostics = registerForActivityResult(CreateDocument("text/plain")) { destination ->
+    private val exportDestination = registerForActivityResult(CreateDocument("text/plain")) { destination ->
         destination?.let(viewModel::exportDiagnostics)
-    }
-
-    private val actions = object : MainActions {
-        override fun start(minutes: Int) = handle(viewModel.start(minutes))
-        override fun stop() = viewModel.stop()
-        override fun extend() = handle(viewModel.extend())
-        override fun reduce() = handle(viewModel.reduce())
-        override fun setMinutes(setting: DurationSetting, minutes: Int) = handle(viewModel.setMinutes(setting, minutes))
-
-        override fun setThemeMode(mode: ThemeMode) {
-            viewModel.setThemeMode(mode)
-            // Before Android 12 the activity is not recreated: Compose follows alone, but not the system bars.
-            applySystemBars(mode)
-        }
-
-        override fun setDynamicColor(enabled: Boolean) = viewModel.setDynamicColor(enabled)
-        override fun setAutomationEnabled(enabled: Boolean) = viewModel.setAutomationEnabled(enabled)
-        override fun setDiagnosticsEnabled(enabled: Boolean) = viewModel.setDiagnosticsEnabled(enabled)
-        override fun clearDiagnostics() = viewModel.clearDiagnostics()
-
-        override fun exportDiagnostics() {
-            try {
-                exportDiagnostics.launch("zzztimer-diagnostics-${LocalDate.now()}.txt")
-            } catch (e: ActivityNotFoundException) {
-                // No document provider on the device.
-                Log.w(TAG, "Cannot pick a destination", e)
-                toast(R.string.diagnostics_export_failed)
-            }
-        }
-        override fun resolve(requirement: Requirement) = this@MainActivity.resolve(requirement)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,8 +64,12 @@ class MainActivity : ComponentActivity() {
         applySystemBars(SettingsStore.from(this).themeMode)
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
-            ZzzTimerTheme(themeMode = state.settings.themeMode, dynamicColor = state.settings.dynamicColor) {
-                MainScreen(state = state, actions = actions)
+            val themeMode = state.settings.themeMode
+            // Before Android 12 the activity is not recreated on theme changes: Compose follows alone, not the system bars.
+            LaunchedEffect(themeMode) { applySystemBars(themeMode) }
+            LaunchedEffect(viewModel) { viewModel.blocked.collect { resolve(it) } }
+            ZzzTimerTheme(themeMode = themeMode, dynamicColor = state.settings.dynamicColor) {
+                MainScreen(state = state, actions = viewModel, onResolve = ::resolve, onExportDiagnostics = ::exportDiagnostics)
             }
         }
     }
@@ -120,10 +92,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 
-    private fun handle(result: StartResult?) {
-        if (result is StartResult.Blocked) resolve(result.requirement)
-    }
-
     private fun resolve(requirement: Requirement) {
         val canPrompt =
             requirement == Requirement.NOTIFICATIONS && SDK_INT >= TIRAMISU && checkSelfPermission(POST_NOTIFICATIONS) != PERMISSION_GRANTED
@@ -131,4 +99,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openSettings(requirement: Requirement) = startSettings(settingsIntent(requirement))
+
+    private fun exportDiagnostics() {
+        try {
+            exportDestination.launch("zzztimer-diagnostics-${LocalDate.now()}.txt")
+        } catch (e: ActivityNotFoundException) {
+            diagnostics.warn("diagnostics: no document provider", e)
+            toast(R.string.diagnostics_export_failed)
+        }
+    }
 }

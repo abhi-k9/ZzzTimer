@@ -95,7 +95,7 @@ jobs:
           ZZZTIMER_SIGNING_STORE_PASSWORD: ${{ secrets.ZZZTIMER_SIGNING_STORE_PASSWORD }}
           ZZZTIMER_SIGNING_KEY_ALIAS: ${{ secrets.ZZZTIMER_SIGNING_KEY_ALIAS }}
           ZZZTIMER_SIGNING_KEY_PASSWORD: ${{ secrets.ZZZTIMER_SIGNING_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease :core:test lint --stacktrace
+        run: ./gradlew assembleRelease test lint --stacktrace
 
       - name: Remove the keystore
         if: always()

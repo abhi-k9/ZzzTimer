@@ -5,16 +5,15 @@ import android.media.AudioManager.ADJUST_LOWER
 import android.media.AudioManager.STREAM_MUSIC
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.P
-import android.util.Log
 import android.view.KeyEvent
-import io.github.abhik9.zzztimer.core.EventLog
 import io.github.abhik9.zzztimer.core.MediaAudio
+import io.github.abhik9.zzztimer.diagnostics.DiagnosticsLog
 
 /**
  * [MediaAudio] backed by the media stream of the [AudioManager].
  * Volume changes can be refused by the system (e.g. Do Not Disturb policies): they are logged and ignored.
  */
-internal class AndroidMediaAudio(private val audio: AudioManager, private val log: EventLog) : MediaAudio {
+internal class AndroidMediaAudio(private val audio: AudioManager, private val log: DiagnosticsLog) : MediaAudio {
 
     override val volume: Int get() = audio.getStreamVolume(STREAM_MUSIC)
     override val minVolume: Int get() = if (SDK_INT >= P) audio.getStreamMinVolume(STREAM_MUSIC) else 0
@@ -34,12 +33,7 @@ internal class AndroidMediaAudio(private val audio: AudioManager, private val lo
         try {
             block()
         } catch (e: SecurityException) {
-            Log.w(TAG, "Audio operation refused", e)
-            log.record { "audio: operation refused: $e" }
+            log.warn("audio: operation refused", e)
         }
-    }
-
-    private companion object {
-        const val TAG = "AndroidMediaAudio"
     }
 }
