@@ -1,0 +1,2 @@
+- Clearer messages when a permission is missing.
+- Internal cleanups.
