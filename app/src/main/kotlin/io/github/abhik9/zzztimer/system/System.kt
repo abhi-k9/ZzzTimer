@@ -19,8 +19,11 @@ private const val TAG = "System"
 fun Context.settingsIntent(requirement: Requirement): Intent = when (requirement) {
     Requirement.NOTIFICATIONS -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
     Requirement.EXACT_ALARMS ->
-        if (SDK_INT >= S) Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:$packageName".toUri())
-        else appDetailsIntent()
+        if (SDK_INT >= S) {
+            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:$packageName".toUri())
+        } else {
+            appDetailsIntent()
+        }
 }
 
 /** Fallback for OEM builds missing a specific settings screen. */

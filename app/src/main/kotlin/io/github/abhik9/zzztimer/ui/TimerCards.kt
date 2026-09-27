@@ -68,7 +68,10 @@ private fun rememberRemaining(timer: Timer, elapsedNow: () -> Long): Duration {
 internal fun TimerCard(state: MainUiState, actions: MainActions, elapsedNow: () -> Long, modifier: Modifier = Modifier) = Card(
     modifier = modifier,
     colors = if (state.timer != null) {
-        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
     } else {
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
     },

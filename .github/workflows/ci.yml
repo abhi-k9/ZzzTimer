@@ -15,6 +15,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ktlint:
+    name: Kotlin style
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      KTLINT_VERSION: 1.8.0
+      KTLINT_SHA256: 369ad2b789f95a011f807e1fcb690ccef80bd7cd014fd139e73ae82dcc0baeab
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: ktlint
+        run: |
+          curl -sSfL -o ktlint.jar "https://repo1.maven.org/maven2/com/pinterest/ktlint/ktlint-cli/$KTLINT_VERSION/ktlint-cli-$KTLINT_VERSION-all.jar"
+          echo "$KTLINT_SHA256  ktlint.jar" | sha256sum --check --strict
+          java -jar ktlint.jar --relative "**/*.kt" "**/*.kts"
+
   build:
     name: Build, test & lint
     runs-on: ubuntu-latest

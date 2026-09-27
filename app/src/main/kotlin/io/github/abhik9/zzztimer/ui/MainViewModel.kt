@@ -59,12 +59,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshes,
     )
 
-    val state: StateFlow<MainUiState> = combine(settings.changes, ticks) { settings, _ -> state(settings) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds.inWholeMilliseconds), state(settings.snapshot()))
+    val state: StateFlow<MainUiState> = combine(settings.changes, ticks) { current, _ -> uiState(current) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds.inWholeMilliseconds), uiState(settings.snapshot()))
 
-    private fun state(settings: UserSettings) = MainUiState(
+    private fun uiState(userSettings: UserSettings) = MainUiState(
         timer = timer.current(),
-        settings = settings,
+        settings = userSettings,
         missingRequirement = timer.missingRequirement(),
     )
 

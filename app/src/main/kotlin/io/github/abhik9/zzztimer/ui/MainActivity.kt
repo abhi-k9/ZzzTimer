@@ -99,7 +99,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun resolve(requirement: Requirement) {
-        val canPrompt = requirement == Requirement.NOTIFICATIONS && SDK_INT >= TIRAMISU && checkSelfPermission(POST_NOTIFICATIONS) != PERMISSION_GRANTED
+        val canPrompt =
+            requirement == Requirement.NOTIFICATIONS && SDK_INT >= TIRAMISU && checkSelfPermission(POST_NOTIFICATIONS) != PERMISSION_GRANTED
         if (canPrompt) notificationPermission.launch(POST_NOTIFICATIONS) else openSettings(requirement)
     }
 

@@ -45,8 +45,11 @@ class SleepService : Service() {
         private fun intent(context: Context) = Intent(context, SleepService::class.java)
 
         private fun pendingIntent(context: Context, intent: Intent, foreground: Boolean, flags: Int): PendingIntent? =
-            if (foreground) PendingIntent.getForegroundService(context, 0, intent, FLAG_IMMUTABLE or flags)
-            else PendingIntent.getService(context, 0, intent, FLAG_IMMUTABLE or flags)
+            if (foreground) {
+                PendingIntent.getForegroundService(context, 0, intent, FLAG_IMMUTABLE or flags)
+            } else {
+                PendingIntent.getService(context, 0, intent, FLAG_IMMUTABLE or flags)
+            }
 
         /**
          * There is only ever one such [PendingIntent] per [foreground] value: [FLAG_UPDATE_CURRENT] updates the
@@ -72,7 +75,7 @@ class SleepService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Must be called right away when started with `startForegroundService()`.
-        if (intent?.getBooleanExtra(EXTRA_FOREGROUND, false) == true) startForeground()
+        if (intent?.getBooleanExtra(EXTRA_FOREGROUND, false) == true) enterForeground()
         val deadline = intent?.getLongExtra(EXTRA_DEADLINE, 0L) ?: 0L
         // Timer operations run on the main thread, see SleepTimer.
         if (sleepTimer().onDeadline(deadline) != DeadlineOutcome.SLEEP) {
@@ -102,7 +105,7 @@ class SleepService : Service() {
         super.onDestroy()
     }
 
-    private fun startForeground() {
+    private fun enterForeground() {
         if (SDK_INT < UPSIDE_DOWN_CAKE) return
         TimerNotification.createChannel(this)
         val notification = Notification.Builder(this, TimerNotification.CHANNEL_ID)

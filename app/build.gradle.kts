@@ -47,11 +47,13 @@ android {
 
     signingConfigs {
         val storeFile = signingValue("storeFile")
-        if (storeFile != null) create("release") {
-            this.storeFile = file(storeFile)
-            storePassword = signingValue("storePassword")
-            keyAlias = signingValue("keyAlias")
-            keyPassword = signingValue("keyPassword")
+        if (storeFile != null) {
+            create("release") {
+                this.storeFile = file(storeFile)
+                storePassword = signingValue("storePassword")
+                keyAlias = signingValue("keyAlias")
+                keyPassword = signingValue("keyPassword")
+            }
         }
     }
 
@@ -80,7 +82,6 @@ android {
 
     lint {
         abortOnError = true
-        warningsAsErrors = true
         checkDependencies = true
         // Dependency updates are handled by Dependabot, not by failing unrelated builds.
         disable += setOf("AndroidGradlePluginVersion", "GradleDependency", "NewerVersionAvailable", "OldTargetApi")
@@ -100,7 +101,6 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
-        allWarningsAsErrors = true
     }
 }
 

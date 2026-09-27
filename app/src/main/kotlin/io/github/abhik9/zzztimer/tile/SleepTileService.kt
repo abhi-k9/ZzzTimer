@@ -55,8 +55,11 @@ class SleepTileService : TileService() {
         val tile = qsTile ?: return
         tile.state = if (timer == null) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
         if (SDK_INT >= Q) {
-            tile.subtitle = if (timer == null) getString(R.string.tile_subtitle)
-            else getString(R.string.tile_subtitle_running, DateFormat.getTimeFormat(this).format(Date(timer.endsAt)))
+            tile.subtitle = if (timer == null) {
+                getString(R.string.tile_subtitle)
+            } else {
+                getString(R.string.tile_subtitle_running, DateFormat.getTimeFormat(this).format(Date(timer.endsAt)))
+            }
         }
         tile.updateTile()
     }

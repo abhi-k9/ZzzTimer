@@ -26,7 +26,14 @@ class SleepTimerTest {
         fun `start displays and arms the timer`() {
             val started = timer.start(20.minutes).started()
 
-            assertEquals(Timer(deadline = clock.elapsed + 20.minutes.inWholeMilliseconds, endsAt = clock.wall + 20.minutes.inWholeMilliseconds), started)
+            assertEquals(
+                Timer(
+                    deadline = clock.elapsed + 20.minutes.inWholeMilliseconds,
+                    endsAt =
+                    clock.wall + 20.minutes.inWholeMilliseconds,
+                ),
+                started,
+            )
             assertEquals(started, display.shown)
             assertEquals(20.minutes, display.timeout)
             assertEquals(started, trigger.armed)

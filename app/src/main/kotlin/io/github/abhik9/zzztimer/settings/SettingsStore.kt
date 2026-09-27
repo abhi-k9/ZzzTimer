@@ -54,7 +54,8 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
     fun timerSettings(): TimerSettings = TimerSettings.ofMinutes(::minutes)
 
     var themeMode: ThemeMode
-        get() = read(KEY_THEME, null, prefs::getString)?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.SYSTEM
+        get() = read(KEY_THEME, null, prefs::getString)?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
+            ?: ThemeMode.SYSTEM
         set(value) = prefs.edit { putString(KEY_THEME, value.name) }
 
     var dynamicColor: Boolean

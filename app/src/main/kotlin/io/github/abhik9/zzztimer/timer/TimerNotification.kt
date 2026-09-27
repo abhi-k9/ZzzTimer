@@ -35,7 +35,7 @@ internal class TimerNotification(
 
     companion object {
         const val CHANNEL_ID = "timer"
-        private const val TAG = "timer"
+        private const val NOTIFICATION_TAG = "timer"
         private const val ID = 1
         private const val EXTRA_DEADLINE = "io.github.abhik9.zzztimer.extra.DEADLINE"
 
@@ -56,18 +56,19 @@ internal class TimerNotification(
         manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL_ID)?.importance != IMPORTANCE_NONE
 
     override fun current(): Timer? {
-        val notification = manager.activeNotifications.firstOrNull { it.tag == TAG && it.id == ID }?.notification ?: return null
+        val notification =
+            manager.activeNotifications.firstOrNull { it.tag == NOTIFICATION_TAG && it.id == ID }?.notification ?: return null
         val deadline = notification.extras.getLong(EXTRA_DEADLINE, 0L)
         return if (deadline > 0L) Timer(deadline = deadline, endsAt = notification.`when`) else null
     }
 
     override fun show(timer: Timer, timeout: Duration) {
         createChannel(context)
-        manager.notify(TAG, ID, build(timer, timeout))
+        manager.notify(NOTIFICATION_TAG, ID, build(timer, timeout))
     }
 
     // Cancelling the notification from the app does not send its `deleteIntent`.
-    override fun hide() = manager.cancel(TAG, ID)
+    override fun hide() = manager.cancel(NOTIFICATION_TAG, ID)
 
     private fun build(timer: Timer, timeout: Duration): Notification {
         val increment = settings.minutes(DurationSetting.INCREMENT)
@@ -93,7 +94,9 @@ internal class TimerNotification(
             .addAction(action(TimerActionReceiver.ACTION_EXTEND, context.getString(R.string.action_extend, increment)))
             // Hidden rather than ending the timer without pausing playback; it can become stale as time goes by, which
             // SleepTimer.reduce() handles.
-            .apply { if (canReduce) addAction(action(TimerActionReceiver.ACTION_REDUCE, context.getString(R.string.action_reduce, decrement))) }
+            .apply {
+                if (canReduce) addAction(action(TimerActionReceiver.ACTION_REDUCE, context.getString(R.string.action_reduce, decrement)))
+            }
             .addAction(action(TimerActionReceiver.ACTION_STOP, context.getString(R.string.action_stop)))
             .apply {
                 // Live Updates (promoted ongoing notifications) are only available since Android 16 QPR2.

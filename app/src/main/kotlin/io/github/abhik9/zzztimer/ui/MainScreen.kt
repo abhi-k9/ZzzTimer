@@ -1,6 +1,7 @@
 package io.github.abhik9.zzztimer.ui
 
 import android.os.SystemClock
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,18 +81,10 @@ fun MainScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // One warning at a time, in the order they must be resolved.
-                when (val requirement = state.missingRequirement) {
-                    Requirement.NOTIFICATIONS -> WarningCard(
-                        title = R.string.warning_notifications_title,
-                        body = R.string.warning_notifications_body,
-                        onClick = { actions.resolve(requirement) },
-                    )
-                    Requirement.EXACT_ALARMS -> WarningCard(
-                        title = R.string.warning_alarms_title,
-                        body = R.string.warning_alarms_body,
-                        onClick = { actions.resolve(requirement) },
-                    )
-                    null -> Unit
+                state.missingRequirement?.let { requirement ->
+                    WarningCard(title = requirement.warningTitle, body = requirement.warningBody, onClick = {
+                        actions.resolve(requirement)
+                    })
                 }
                 TimerCard(state, actions, elapsedNow)
                 StartTimerCard(state, actions, elapsedNow)
@@ -117,6 +110,20 @@ fun MainScreen(
         )
     }
 }
+
+@get:StringRes
+private val Requirement.warningTitle: Int
+    get() = when (this) {
+        Requirement.NOTIFICATIONS -> R.string.warning_notifications_title
+        Requirement.EXACT_ALARMS -> R.string.warning_alarms_title
+    }
+
+@get:StringRes
+private val Requirement.warningBody: Int
+    get() = when (this) {
+        Requirement.NOTIFICATIONS -> R.string.warning_notifications_body
+        Requirement.EXACT_ALARMS -> R.string.warning_alarms_body
+    }
 
 //region Previews
 private object PreviewActions : MainActions {
