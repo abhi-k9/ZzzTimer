@@ -9,6 +9,7 @@ val versionMajor = 1
 val versionMinor = 0
 val versionPatch = 0
 val versionBuild = 0
+val appVersionName = "$versionMajor.$versionMinor.$versionPatch"
 
 /**
  * `M…Mmmppbb`: every component gets its own two digits (more for major), so codes never overlap and always increase,
@@ -42,7 +43,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = versionCodeOf(versionMajor, versionMinor, versionPatch, versionBuild)
-        versionName = "$versionMajor.$versionMinor.$versionPatch"
+        versionName = appVersionName
     }
 
     signingConfigs {
@@ -104,6 +105,12 @@ kotlin {
         jvmTarget = JvmTarget.JVM_17
         allWarningsAsErrors = true
     }
+}
+
+// Used by the release workflow to check that the pushed tag matches the app version.
+tasks.register("printVersionName") {
+    val versionName = appVersionName
+    doLast { println(versionName) }
 }
 
 dependencies {

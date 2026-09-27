@@ -106,6 +106,35 @@ Release builds are minified. They are signed only when a signing configuration i
 | `zzztimer.signing.keyAlias`      | `ZZZTIMER_SIGNING_KEY_ALIAS`         |
 | `zzztimer.signing.keyPassword`   | `ZZZTIMER_SIGNING_KEY_PASSWORD`      |
 
+## Releasing
+
+Pushing a `vX.Y.Z` tag matching the version in `app/build.gradle.kts` runs the [release workflow](.github/workflows/release.yml):
+it builds, tests and lints the app, signs the APK, verifies the signature, attests its build provenance, and publishes
+it with its SHA-256 checksum as a GitHub Release.
+
+It requires these repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret                              | Value                                   |
+|-------------------------------------|-----------------------------------------|
+| `ZZZTIMER_SIGNING_KEYSTORE_BASE64`  | The release keystore, base64 encoded    |
+| `ZZZTIMER_SIGNING_STORE_PASSWORD`   | The keystore password                   |
+| `ZZZTIMER_SIGNING_KEY_ALIAS`        | The key alias                           |
+| `ZZZTIMER_SIGNING_KEY_PASSWORD`     | The key password                        |
+
+A keystore can be created once with `keytool` (keep it and its passwords safe: every future update must be signed with
+the same key):
+
+```bash
+keytool -genkeypair -keystore zzztimer-release.jks -alias zzztimer -keyalg RSA -keysize 4096 -validity 10000
+base64 -w 0 zzztimer-release.jks   # value of ZZZTIMER_SIGNING_KEYSTORE_BASE64 (macOS: base64 -i zzztimer-release.jks)
+```
+
+Anyone can check that a downloaded APK was built by this repository's workflow:
+
+```bash
+gh attestation verify ZzzTimer-vX.Y.Z.apk --repo abhi-k9/ZzzTimer
+```
+
 ## Privacy
 
 ZzzTimer has no Internet permission and collects no data, see the [privacy policy](PRIVACY.md).
