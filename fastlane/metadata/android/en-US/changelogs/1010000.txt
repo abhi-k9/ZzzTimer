@@ -1,0 +1,5 @@
+- New app, tile and notification icons, with a themed icon on Android 13 and later.
+- A fade-out is no longer cut short when a dismissal is handled at the same time.
+- A timer that ended is always removed from the notifications, and the tile updates right away.
+- Smoother main screen: the timer is polled off the main thread.
+- Release APKs are also signed with APK Signature Scheme v3.
