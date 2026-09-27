@@ -29,10 +29,12 @@ internal class AndroidMediaAudio(private val audio: AudioManager) : MediaAudio {
         audio.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PAUSE))
     }
 
-    private inline fun guarded(block: () -> Unit) = try {
-        block()
-    } catch (e: SecurityException) {
-        Log.w(TAG, "Audio operation refused", e)
+    private inline fun guarded(block: () -> Unit) {
+        try {
+            block()
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Audio operation refused", e)
+        }
     }
 
     private companion object {
