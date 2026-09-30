@@ -93,7 +93,8 @@ class SleepService : Service() {
         scope.launch {
             try {
                 mutex.withLock {
-                    SleepRoutine(AndroidMediaAudio(getSystemService(AudioManager::class.java), diagnostics), log = diagnostics).run()
+                    val audio = AndroidMediaAudio(getSystemService(AudioManager::class.java), diagnostics)
+                    SleepRoutine(audio, media = { SessionPlayingMedia.find(this@SleepService, diagnostics) }, log = diagnostics).run()
                 }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {

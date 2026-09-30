@@ -10,13 +10,14 @@ ZzzTimer is an open source app, provided free of charge and as is.
 
 Permissions the app requests, and why:
 
-| Permission                                | Purpose                                                              |
-|-------------------------------------------|----------------------------------------------------------------------|
-| Notifications                             | Show the running timer and its actions.                              |
-| Promoted notifications                    | Show the running timer as a Live Update (Android 16 QPR2 and later). |
-| Alarms & reminders (Android 17 and later) | Pause playback exactly when the timer ends.                          |
-| Foreground service (Android 17 and later) | Lower the volume and pause playback when the timer ends.             |
+| Permission                                | Purpose                                                                                 |
+|-------------------------------------------|-----------------------------------------------------------------------------------------|
+| Notifications                             | Show the running timer and its actions.                                                 |
+| Promoted notifications                    | Show the running timer as a Live Update (Android 16 QPR2 and later).                    |
+| Alarms & reminders (Android 17 and later) | Pause playback exactly when the timer ends.                                             |
+| Foreground service (Android 17 and later) | Lower the volume and pause playback when the timer ends.                                |
+| Notification access (optional)            | Find the playing media when the timer ends, to rewind it. Notifications are never read. |
 
 Questions or concerns can be raised on the project's [issue tracker](https://github.com/abhi-k9/ZzzTimer/issues).
 
-This policy is effective as of 2026-09-27.
+This policy is effective as of 2026-09-30.

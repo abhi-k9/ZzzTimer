@@ -18,6 +18,7 @@ import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.settings.ThemeMode
 import io.github.abhik9.zzztimer.settings.UserSettings
+import io.github.abhik9.zzztimer.sleep.MediaAccessService
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.system.toast
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +51,8 @@ data class MainUiState(
     val dynamicColorAvailable: Boolean = SDK_INT >= S,
     /** Size of the recorded diagnostics log, in bytes. */
     val diagnosticsLogBytes: Long = 0,
+    /** Whether Notification access is granted, which lets ZzzTimer rewind the playing media. */
+    val mediaAccess: Boolean = false,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application), MainActions {
@@ -89,6 +92,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), M
         settings = userSettings,
         missingRequirement = timer.missingRequirement(),
         diagnosticsLogBytes = diagnostics.size(),
+        mediaAccess = MediaAccessService.isGranted(getApplication<Application>()),
     )
 
     /** Re-reads the timer and the permissions right away, e.g. when coming back from the system settings. */

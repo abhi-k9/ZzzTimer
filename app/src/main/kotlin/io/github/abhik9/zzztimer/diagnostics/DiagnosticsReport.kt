@@ -17,6 +17,7 @@ import android.os.SystemClock
 import androidx.annotation.RequiresApi
 import androidx.core.content.pm.PackageInfoCompat
 import io.github.abhik9.zzztimer.settings.SettingsStore
+import io.github.abhik9.zzztimer.sleep.MediaAccessService
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.timer.TimerNotification
 import java.time.OffsetDateTime
@@ -44,6 +45,7 @@ internal object DiagnosticsReport {
         appendLine("Timer channel importance: ${channel?.importance ?: "not created"}")
         val exactAlarms = if (SDK_INT >= S) app.getSystemService(AlarmManager::class.java).canScheduleExactAlarms() else "n/a"
         appendLine("Exact alarms allowed: $exactAlarms")
+        appendLine("Notification access (rewind): ${MediaAccessService.isGranted(app)}")
         appendLine("Ignoring battery optimizations: ${power.isIgnoringBatteryOptimizations(app.packageName)}")
         appendLine("Power save mode: ${power.isPowerSaveMode}")
         if (SDK_INT >= P) {

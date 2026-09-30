@@ -27,6 +27,7 @@ import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.settings.ThemeMode
+import io.github.abhik9.zzztimer.system.mediaAccessSettingsIntent
 import io.github.abhik9.zzztimer.system.settingsIntent
 import io.github.abhik9.zzztimer.system.startSettings
 import io.github.abhik9.zzztimer.system.toast
@@ -37,7 +38,8 @@ import java.time.LocalDate
  * Starts a timer of an exact duration, controls the running one, and holds the settings.
  * Opened from the launcher, the notification, or by long pressing the Quick Settings tile.
  *
- * Only handles what requires an activity: permission prompts, the export destination picker and the system bars.
+ * Only handles what requires an activity: permission prompts, system settings, the export destination picker and the
+ * system bars.
  */
 class MainActivity : ComponentActivity() {
 
@@ -69,7 +71,13 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(themeMode) { applySystemBars(themeMode) }
             LaunchedEffect(viewModel) { viewModel.blocked.collect { resolve(it) } }
             ZzzTimerTheme(themeMode = themeMode, dynamicColor = state.settings.dynamicColor) {
-                MainScreen(state = state, actions = viewModel, onResolve = ::resolve, onExportDiagnostics = ::exportDiagnostics)
+                MainScreen(
+                    state = state,
+                    actions = viewModel,
+                    onResolve = ::resolve,
+                    onAllowMediaAccess = { startSettings(mediaAccessSettingsIntent()) },
+                    onExportDiagnostics = ::exportDiagnostics,
+                )
             }
         }
     }

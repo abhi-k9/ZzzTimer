@@ -14,7 +14,12 @@ by Simon Marquis, see [NOTICE](NOTICE).
 - **Quick Settings tile**: tap to start a timer of the default duration, tap again to stop it.
 - **Notification**: extend, reduce or stop the timer. Dismissing it (possible since Android 14) stops the timer.
 - **App** (launcher, notification tap, or long press on the tile): start a timer of any duration, configure the default
-  duration and the `+` / `−` steps, the theme, automation and diagnostics.
+  duration and the `+` / `−` steps, rewinding, the theme, automation and diagnostics.
+
+**Rewind to where the fade started** (optional): once paused, playback goes back to where the volume started to fade,
+plus 5% of the fade, and at most a minute. It needs *Notification access*, only to find the playing media: ZzzTimer never
+reads notifications. If the APK was installed from a browser or a file manager, Android may first ask to allow
+*restricted settings*, from ZzzTimer's App info menu (⋮).
 
 ## Automation
 
@@ -55,10 +60,14 @@ default, capped at about 512 KB, and never leaves the device unless exported (se
   starts it. Since Android 17, [background audio hardening](https://developer.android.com/about/versions/17/changes/bg-audio)
   requires a foreground service, which an exact alarm starts instead (hence the *Alarms & reminders* permission).
 - A signal received well before the deadline means the notification was dismissed: the timer is cancelled instead.
+- To rewind, the service reads the position of the playing [media session](https://developer.android.com/reference/android/media/session/MediaController)
+  when the fade starts and when it ends, then seeks back. Positions are in media time, so the playback speed is
+  accounted for. Players that can't seek (e.g. live streams) are only paused. The Notification access listener is only
+  there to be enabled: it unbinds itself right away, and never receives notifications.
 
 The `:core` module holds the logic in pure Kotlin, unit tested on the JVM: `SleepTimer`, the fade out (`SleepRoutine`)
-and the automation API. It defines small interfaces (`TimerDisplay`, `SleepTrigger`, `MediaAudio`, `DeviceClock`,
-`EventLog`) that `:app` implements with the platform APIs, next to the Jetpack Compose UI.
+and the automation API. It defines small interfaces (`TimerDisplay`, `SleepTrigger`, `MediaAudio`, `PlayingMedia`,
+`DeviceClock`, `EventLog`) that `:app` implements with the platform APIs, next to the Jetpack Compose UI.
 
 ## Building
 

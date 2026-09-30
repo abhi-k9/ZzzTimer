@@ -5,5 +5,6 @@ This product is a rewrite of Sleep Timer (https://github.com/SimonMarquis/SleepT
 Copyright 2020 Simon Marquis, licensed under the Apache License, Version 2.0.
 
 Changes from the original work: the code has been rewritten and restructured (pure Kotlin core module,
-new Android adapters and UI), renamed, and extended (automation toggle, toggle action, input validation, diagnostics).
+new Android adapters and UI), renamed, and extended (automation toggle, toggle action, input validation, diagnostics,
+rewind to where the fade started).
 The fallback color palette and the overall timer mechanism come from the original work.

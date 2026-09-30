@@ -118,6 +118,17 @@ internal fun AppearanceCard(state: MainUiState, actions: MainActions, modifier: 
 }
 
 @Composable
+internal fun TimerEndCard(state: MainUiState, onAllowMediaAccess: () -> Unit, modifier: Modifier = Modifier) = SettingsCard(modifier) {
+    // A system permission rather than a setting: both ways lead to its settings screen.
+    SwitchItem(
+        title = R.string.rewind_title,
+        description = R.string.rewind_description,
+        checked = state.mediaAccess,
+        onCheckedChange = { onAllowMediaAccess() },
+    )
+}
+
+@Composable
 internal fun AutomationCard(state: MainUiState, actions: MainActions, modifier: Modifier = Modifier) = SettingsCard(modifier) {
     SwitchItem(
         title = R.string.automation_title,

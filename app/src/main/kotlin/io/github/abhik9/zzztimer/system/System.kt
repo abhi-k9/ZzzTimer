@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.os.Build.VERSION.SDK_INT
+import android.os.Build.VERSION_CODES
 import android.os.Build.VERSION_CODES.S
 import android.provider.Settings
 import android.widget.Toast
@@ -13,6 +14,7 @@ import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.StartResult
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
+import io.github.abhik9.zzztimer.sleep.MediaAccessService
 
 /** Where the user can resolve a [Requirement]. */
 fun Context.settingsIntent(requirement: Requirement): Intent = when (requirement) {
@@ -23,6 +25,14 @@ fun Context.settingsIntent(requirement: Requirement): Intent = when (requirement
         } else {
             appDetailsIntent()
         }
+}
+
+/** Where the user grants Notification access to the [MediaAccessService], which lets ZzzTimer rewind the playing media. */
+fun Context.mediaAccessSettingsIntent(): Intent = if (SDK_INT >= VERSION_CODES.R) {
+    Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+        .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, MediaAccessService.component(this).flattenToString())
+} else {
+    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
 }
 
 /** Fallback for OEM builds missing a specific settings screen. */

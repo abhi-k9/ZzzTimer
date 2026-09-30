@@ -1,6 +1,8 @@
 package io.github.abhik9.zzztimer.core
 
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class FakeClock(var wall: Long = 1_000_000L, var elapsed: Long = 50_000L) : DeviceClock {
     override fun wallMillis() = wall
@@ -57,6 +59,9 @@ class FakeAudio(
 ) : MediaAudio {
     val events = mutableListOf<String>()
 
+    /** Called right before pausing, while still playing. */
+    var onPause: () -> Unit = {}
+
     override fun lowerVolume() {
         volume = (volume - 1).coerceAtLeast(minVolume)
         events += "lower"
@@ -68,7 +73,47 @@ class FakeAudio(
     }
 
     override fun pause() {
+        onPause()
         if (pausable) isPlaying = false
         events += "pause"
+    }
+}
+
+/**
+ * A media session playing through [audio] at [speed]: its position follows [clock] (in milliseconds) while
+ * [FakeAudio.isPlaying]. [seekable] `false` stands for players that can't tell their position, e.g. live streams.
+ */
+class FakeMedia(
+    private val audio: FakeAudio,
+    private val clock: () -> Long,
+    start: Duration = 100.seconds,
+    private val speed: Double = 1.0,
+    private val seekable: Boolean = true,
+) : PlayingMedia {
+    val seeks = mutableListOf<Duration>()
+    private var position = start
+    private var since = clock()
+
+    init {
+        // The position moves until the player pauses.
+        audio.onPause = ::advance
+    }
+
+    override fun current(): PlaybackPoint? {
+        advance()
+        return if (seekable) PlaybackPoint("episode", position) else null
+    }
+
+    override fun seekTo(position: Duration) {
+        advance()
+        this.position = position
+        seeks += position
+        audio.events += "seek"
+    }
+
+    private fun advance() {
+        val now = clock()
+        if (audio.isPlaying) position += (now - since).milliseconds * speed
+        since = now
     }
 }

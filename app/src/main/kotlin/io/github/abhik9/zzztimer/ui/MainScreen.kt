@@ -53,6 +53,7 @@ interface MainActions {
 
 /**
  * @param onResolve asks the user to resolve a [Requirement] (permission prompt or system settings).
+ * @param onAllowMediaAccess opens the Notification access settings, which let ZzzTimer rewind the playing media.
  * @param onExportDiagnostics asks the user where to export the diagnostics.
  * @param elapsedNow the `elapsedRealtime` clock, the timeline of [Timer.deadline].
  */
@@ -62,6 +63,7 @@ fun MainScreen(
     state: MainUiState,
     actions: MainActions,
     onResolve: (Requirement) -> Unit,
+    onAllowMediaAccess: () -> Unit,
     onExportDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
     elapsedNow: () -> Long = SystemClock::elapsedRealtime,
@@ -94,6 +96,8 @@ fun MainScreen(
                 StartTimerCard(state, actions, elapsedNow)
                 SectionHeader(R.string.section_durations)
                 DurationsCard(state, onEdit = { editing = it })
+                SectionHeader(R.string.section_timer_end)
+                TimerEndCard(state, onAllowMediaAccess)
                 SectionHeader(R.string.section_appearance)
                 AppearanceCard(state, actions)
                 SectionHeader(R.string.section_automation)
@@ -131,16 +135,19 @@ private object PreviewActions : MainActions {
     override fun clearDiagnostics() = Unit
 }
 
+@Composable
+private fun PreviewScreen(state: MainUiState) =
+    MainScreen(state, PreviewActions, onResolve = {}, onAllowMediaAccess = {}, onExportDiagnostics = {}, elapsedNow = { 0L })
+
 @Preview(name = "Idle")
 @Composable
 private fun IdlePreview() = ZzzTimerTheme(ThemeMode.LIGHT, dynamicColor = false) {
-    MainScreen(MainUiState(missingRequirement = Requirement.NOTIFICATIONS), PreviewActions, onResolve = {}, onExportDiagnostics = {})
+    PreviewScreen(MainUiState(missingRequirement = Requirement.NOTIFICATIONS))
 }
 
 @Preview(name = "Running (dark)")
 @Composable
 private fun RunningPreview() = ZzzTimerTheme(ThemeMode.DARK, dynamicColor = false) {
-    MainScreen(MainUiState(timer = Timer(deadline = 23 * 60_000L + 41_000L, endsAt = 0L)), PreviewActions, onResolve = {
-    }, onExportDiagnostics = {}, elapsedNow = { 0L })
+    PreviewScreen(MainUiState(timer = Timer(deadline = 23 * 60_000L + 41_000L, endsAt = 0L)))
 }
 //endregion

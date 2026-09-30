@@ -1,0 +1,2 @@
+- New "Rewind to where the fade started" setting: once paused, playback goes back to where the volume started to fade (plus a few seconds, at most a minute), at any playback speed. It needs Notification access, only to find the playing media.
+- Diagnostics record the positions and the rewind.
