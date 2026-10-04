@@ -44,6 +44,7 @@ interface MainActions {
     fun extend()
     fun reduce()
     fun setMinutes(setting: DurationSetting, minutes: Int)
+    fun setFadeSeconds(seconds: Int)
     fun setThemeMode(mode: ThemeMode)
     fun setDynamicColor(enabled: Boolean)
     fun setAutomationEnabled(enabled: Boolean)
@@ -97,7 +98,7 @@ fun MainScreen(
                 SectionHeader(R.string.section_durations)
                 DurationsCard(state, onEdit = { editing = it })
                 SectionHeader(R.string.section_timer_end)
-                TimerEndCard(state, onAllowMediaAccess)
+                TimerEndCard(state, actions, onAllowMediaAccess)
                 SectionHeader(R.string.section_appearance)
                 AppearanceCard(state, actions)
                 SectionHeader(R.string.section_automation)
@@ -128,6 +129,7 @@ private object PreviewActions : MainActions {
     override fun extend() = Unit
     override fun reduce() = Unit
     override fun setMinutes(setting: DurationSetting, minutes: Int) = Unit
+    override fun setFadeSeconds(seconds: Int) = Unit
     override fun setThemeMode(mode: ThemeMode) = Unit
     override fun setDynamicColor(enabled: Boolean) = Unit
     override fun setAutomationEnabled(enabled: Boolean) = Unit

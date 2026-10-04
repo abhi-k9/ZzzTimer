@@ -123,6 +123,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application), M
         if (setting != DurationSetting.INITIAL) timer.refresh() else null
     }
 
+    override fun setFadeSeconds(seconds: Int) {
+        settings.fadeSeconds = seconds
+    }
+
     override fun setThemeMode(mode: ThemeMode) {
         settings.themeMode = mode
         // Since Android 12 the system persists a per-app night mode, applied to every window (which are recreated).

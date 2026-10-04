@@ -75,14 +75,27 @@ internal fun WarningCard(@StringRes title: Int, @StringRes body: Int, onClick: (
  * A duration in whole minutes, localized by ICU, e.g. "1 hr, 30 min".
  */
 @Composable
-internal fun formatMinutes(minutes: Int): String {
+internal fun formatMinutes(minutes: Int): String = rememberDurationFormat().formatParts(minutes, MeasureUnit.HOUR, MeasureUnit.MINUTE)
+
+/**
+ * A duration in whole seconds, localized by ICU, e.g. "45 sec" or "1 min".
+ */
+@Composable
+internal fun formatSeconds(seconds: Int): String = rememberDurationFormat().formatParts(seconds, MeasureUnit.MINUTE, MeasureUnit.SECOND)
+
+@Composable
+private fun rememberDurationFormat(): MeasureFormat {
     val locale = LocalConfiguration.current.locales[0]
-    val format = remember(locale) { MeasureFormat.getInstance(locale, MeasureFormat.FormatWidth.SHORT) }
-    val hours = minutes / 60
-    val rest = minutes % 60
+    return remember(locale) { MeasureFormat.getInstance(locale, MeasureFormat.FormatWidth.SHORT) }
+}
+
+/** [value] [small] units, split into [large] units (worth 60 [small] units) and the rest, e.g. "1 hr, 30 min". */
+private fun MeasureFormat.formatParts(value: Int, large: MeasureUnit, small: MeasureUnit): String {
+    val whole = value / 60
+    val rest = value % 60
     return when {
-        hours == 0 -> format.format(Measure(rest, MeasureUnit.MINUTE))
-        rest == 0 -> format.format(Measure(hours, MeasureUnit.HOUR))
-        else -> format.formatMeasures(Measure(hours, MeasureUnit.HOUR), Measure(rest, MeasureUnit.MINUTE))
+        whole == 0 -> format(Measure(rest, small))
+        rest == 0 -> format(Measure(whole, large))
+        else -> formatMeasures(Measure(whole, large), Measure(rest, small))
     }
 }

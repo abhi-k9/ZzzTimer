@@ -4,7 +4,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -46,21 +45,27 @@ interface PlayingMedia {
 }
 
 /**
- * What happens when a timer ends: the volume is gradually lowered, playback is paused, then the volume is restored.
- * When the [media] session is available, playback is also rewound to where the fade started, see [rewindTarget].
+ * What happens when a timer ends: the volume is gradually lowered over the [fade], playback is paused, then the volume
+ * is restored. When the [media] session is available, playback is also rewound to where the fade started, see
+ * [rewindTarget].
  */
 class SleepRoutine(
     private val audio: MediaAudio,
     private val media: () -> PlayingMedia? = { null },
-    private val maxFade: Duration = 30.seconds,
-    private val maxFadeStep: Duration = 1.seconds,
+    /** How long the volume takes to go down, whatever its number of steps. Without a fade, playback is paused right away. */
+    private val fade: Duration = FadeSetting.DEFAULT_SECONDS.seconds,
     private val restoreDelay: Duration = 2.seconds,
-    private val maxRewind: Duration = 1.minutes,
     private val log: EventLog = EventLog.NONE,
 ) {
     private companion object {
         /** Rewinds a bit before the fade started: the listener may have missed its beginning already. */
         const val REWIND_MARGIN = 0.05
+
+        /**
+         * Rewinds at most the [fade] played at this speed, already fast for a podcast: a jump forward during the fade
+         * (e.g. the user skipping ahead) is not replayed in full.
+         */
+        const val MAX_REWIND_SPEED = 3
     }
 
     /**
@@ -71,12 +76,12 @@ class SleepRoutine(
         // Read at the time of the fade: the user may have changed the volume while the timer was running.
         val volume = audio.volume
         val minVolume = audio.minVolume
-        log.record { "sleep: volume=$volume min=$minVolume playing=${audio.isPlaying} fixed=${audio.isVolumeFixed}" }
+        log.record { "sleep: volume=$volume min=$minVolume playing=${audio.isPlaying} fixed=${audio.isVolumeFixed} fade=$fade" }
         // The session playing when the fade started, and where it was. Without a fade, nothing is rewound.
         var fadeStart: Pair<PlayingMedia, PlaybackPoint>? = null
         try {
-            // Pointless when nothing is playing locally (e.g. when casting), or when the volume can't go any lower.
-            if (audio.isPlaying && !audio.isVolumeFixed && volume > minVolume) {
+            // Turned off, or pointless when nothing is playing locally (e.g. when casting) or the volume can't go any lower.
+            if (fade.isPositive() && audio.isPlaying && !audio.isVolumeFixed && volume > minVolume) {
                 media()?.let { session ->
                     val point = session.current()
                     log.record { "rewind: fade starts at $point" }
@@ -101,8 +106,8 @@ class SleepRoutine(
     }
 
     /**
-     * Where playback resumes: where the fade started, minus [REWIND_MARGIN] of the fade, and at most [maxRewind] before
-     * [end]. Positions are in media time, so the playback speed is accounted for.
+     * Where playback resumes: where the fade started, minus [REWIND_MARGIN] of the fade, and at most the [fade] played
+     * at [MAX_REWIND_SPEED] before [end]. Positions are in media time, so the playback speed is accounted for.
      * @return `null` when there is nothing to rewind, e.g. when another item started playing during the fade.
      */
     fun rewindTarget(start: PlaybackPoint, end: PlaybackPoint): Duration? {
@@ -110,7 +115,7 @@ class SleepRoutine(
         val faded = end.position - start.position
         // Moved back during the fade, e.g. by the user.
         if (faded <= Duration.ZERO) return null
-        val rewind = minOf(faded * (1 + REWIND_MARGIN), maxRewind)
+        val rewind = minOf(faded * (1 + REWIND_MARGIN), fade * MAX_REWIND_SPEED)
         return (end.position - rewind).coerceAtLeast(Duration.ZERO)
     }
 
@@ -126,11 +131,8 @@ class SleepRoutine(
         if (target != null) session.seekTo(target)
     }
 
-    /**
-     * Delay between two volume steps: one step per [maxFadeStep], but the whole fade never exceeds [maxFade].
-     * Devices exposing a lot of volume steps would otherwise take minutes to fade out.
-     */
-    fun fadeStepDelay(steps: Int): Duration = if (steps <= 0) Duration.ZERO else minOf(maxFadeStep, maxFade / steps)
+    /** Delay between two volume steps, so that the whole fade lasts the [fade]. */
+    fun fadeStepDelay(steps: Int): Duration = if (steps <= 0) Duration.ZERO else fade / steps
 
     private suspend fun fadeOut(min: Int) {
         val steps = audio.volume - min

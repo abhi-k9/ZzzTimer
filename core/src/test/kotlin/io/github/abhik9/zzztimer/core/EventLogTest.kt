@@ -47,8 +47,8 @@ class EventLogTest {
         SleepRoutine(FakeAudio(volume = 2), log = log).run()
         assertEquals(
             listOf(
-                "sleep: volume=2 min=0 playing=true fixed=false",
-                "fade: 2 steps of 1s",
+                "sleep: volume=2 min=0 playing=true fixed=false fade=30s",
+                "fade: 2 steps of 15s",
                 "sleep: pause requested, playing=false",
                 "restore: volume 2 requested, now 2",
             ),

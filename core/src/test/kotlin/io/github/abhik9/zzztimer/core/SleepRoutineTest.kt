@@ -24,16 +24,34 @@ class SleepRoutineTest {
 
         assertEquals(listOf("lower", "lower", "lower", "pause", "set:3"), audio.events)
         assertEquals(3, audio.volume)
-        // One second per step, then the restore delay.
-        assertEquals(3_000L + 2_000L, currentTime)
+        // The default fade, then the restore delay.
+        assertEquals(30_000L + 2_000L, currentTime)
     }
 
     @Test
-    fun `fade never exceeds its total duration`() {
-        val routine = SleepRoutine(FakeAudio())
+    fun `fade lasts its duration, whatever the number of volume steps`() {
+        val routine = SleepRoutine(FakeAudio(), fade = 30.seconds)
         assertEquals(Duration.ZERO, routine.fadeStepDelay(0))
-        assertEquals(1.seconds, routine.fadeStepDelay(25))
-        for (steps in 1..1000) assertTrue(routine.fadeStepDelay(steps) * steps <= 30.seconds)
+        assertEquals(1.2.seconds, routine.fadeStepDelay(25))
+        for (steps in 1..1000) assertTrue(routine.fadeStepDelay(steps) * steps in 30.seconds - 1.milliseconds..30.seconds)
+    }
+
+    @Test
+    fun `fade duration is configurable`() = runTest {
+        val audio = FakeAudio(volume = 4)
+        SleepRoutine(audio, fade = 10.seconds).run()
+        assertEquals(listOf("lower", "lower", "lower", "lower", "pause", "set:4"), audio.events)
+        assertEquals(10_000L + 2_000L, currentTime)
+    }
+
+    @Test
+    fun `without a fade, pauses right away`() = runTest {
+        val audio = FakeAudio(volume = 3)
+        val media = FakeMedia(audio, clock = { currentTime })
+        SleepRoutine(audio, media = { media }, fade = Duration.ZERO).run()
+        assertEquals(listOf("pause"), audio.events)
+        assertTrue(media.seeks.isEmpty())
+        assertEquals(0L, currentTime)
     }
 
     @Test
@@ -73,8 +91,8 @@ class SleepRoutineTest {
         SleepRoutine(audio, media = { media }).run()
 
         assertEquals(listOf("lower", "lower", "lower", "pause", "seek", "set:3"), audio.events)
-        // Faded from 100 s to 103 s: back to 100 s, minus 5% of those 3 s.
-        assertEquals(listOf(99_850.milliseconds), media.seeks)
+        // Faded from 100 s to 130 s: back to 100 s, minus 5% of those 30 s.
+        assertEquals(listOf(98_500.milliseconds), media.seeks)
     }
 
     @Test
@@ -82,16 +100,16 @@ class SleepRoutineTest {
         val audio = FakeAudio(volume = 3)
         val media = FakeMedia(audio, clock = { currentTime }, speed = 2.0)
         SleepRoutine(audio, media = { media }).run()
-        // 3 s of fade at 2× moved from 100 s to 106 s.
-        assertEquals(listOf(99_700.milliseconds), media.seeks)
+        // 30 s of fade at 2× moved from 100 s to 160 s.
+        assertEquals(listOf(97.seconds), media.seeks)
     }
 
     @Test
-    fun `rewind is at most a minute`() = runTest {
-        val audio = FakeAudio(volume = 30)
-        val media = FakeMedia(audio, clock = { currentTime }, speed = 3.0)
+    fun `rewind is at most the fade at 3x speed`() = runTest {
+        val audio = FakeAudio(volume = 3)
+        val media = FakeMedia(audio, clock = { currentTime }, speed = 4.0)
         SleepRoutine(audio, media = { media }).run()
-        // 30 s of fade at 3× moved from 100 s to 190 s.
+        // 30 s of fade at 4× moved from 100 s to 220 s: back 90 s.
         assertEquals(listOf(130.seconds), media.seeks)
     }
 
@@ -167,7 +185,7 @@ class SleepRoutineTest {
     fun `cancellation still pauses, rewinds and restores`() = runTest {
         val audio = FakeAudio(volume = 10)
         val media = FakeMedia(audio, clock = { currentTime })
-        val job = launch { SleepRoutine(audio, media = { media }).run() }
+        val job = launch { SleepRoutine(audio, media = { media }, fade = 10.seconds).run() }
         advanceTimeBy(2.5.seconds)
         job.cancel()
         runCurrent()
@@ -182,7 +200,7 @@ class SleepRoutineTest {
     @Test
     fun `cancellation still pauses and restores`() = runTest {
         val audio = FakeAudio(volume = 10)
-        val job = launch { SleepRoutine(audio).run() }
+        val job = launch { SleepRoutine(audio, fade = 10.seconds).run() }
         advanceTimeBy(2.5.seconds)
         job.cancel()
         runCurrent()

@@ -35,3 +35,16 @@ data class TimerSettings(val initial: Duration, val increment: Duration, val dec
         val DEFAULT = ofMinutes { it.defaultMinutes }
     }
 }
+
+/**
+ * How long the volume fades out when a timer ends, in whole seconds, see [SleepRoutine]. `0` pauses playback right away.
+ * At most a minute: before Android 17 the sleep runs in a background service, which the system stops soon after.
+ */
+object FadeSetting {
+    const val DEFAULT_SECONDS = 30
+    const val STEP_SECONDS = 5
+    val range = 0..60
+
+    /** Brings a stored or user provided value back into [range]. */
+    fun sanitize(seconds: Int): Int = seconds.coerceIn(range)
+}

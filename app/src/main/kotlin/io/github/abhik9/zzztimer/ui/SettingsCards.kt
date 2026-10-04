@@ -3,6 +3,7 @@ package io.github.abhik9.zzztimer.ui
 import android.text.format.Formatter
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
@@ -15,12 +16,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -31,12 +34,16 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DurationSetting
+import io.github.abhik9.zzztimer.core.FadeSetting
 import io.github.abhik9.zzztimer.settings.ThemeMode
+import kotlin.math.roundToInt
 
 @get:StringRes
 private val DurationSetting.title: Int
@@ -118,7 +125,14 @@ internal fun AppearanceCard(state: MainUiState, actions: MainActions, modifier: 
 }
 
 @Composable
-internal fun TimerEndCard(state: MainUiState, onAllowMediaAccess: () -> Unit, modifier: Modifier = Modifier) = SettingsCard(modifier) {
+internal fun TimerEndCard(
+    state: MainUiState,
+    actions: MainActions,
+    onAllowMediaAccess: () -> Unit,
+    modifier: Modifier = Modifier,
+) = SettingsCard(modifier) {
+    FadeItem(seconds = state.settings.fadeSeconds, onChange = actions::setFadeSeconds)
+    SettingsDivider()
     // A system permission rather than a setting: both ways lead to its settings screen.
     SwitchItem(
         title = R.string.rewind_title,
@@ -168,6 +182,34 @@ internal fun DiagnosticsCard(
             modifier = Modifier.clickable(onClick = actions::clearDiagnostics),
         )
     }
+}
+
+/** Picks the fade out duration in steps of [FadeSetting.STEP_SECONDS], saved once released. */
+@Composable
+private fun FadeItem(seconds: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val range = FadeSetting.range
+    // Follows the slider while it is dragged.
+    var value by remember(seconds) { mutableIntStateOf(seconds) }
+    val label = if (value == 0) stringResource(R.string.fade_off) else formatSeconds(value)
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.fade_title)) },
+        supportingContent = {
+            Column {
+                Text(stringResource(R.string.fade_description))
+                Slider(
+                    value = value.toFloat(),
+                    onValueChange = { value = it.roundToInt() },
+                    onValueChangeFinished = { onChange(value) },
+                    valueRange = range.first.toFloat()..range.last.toFloat(),
+                    steps = (range.last - range.first) / FadeSetting.STEP_SECONDS - 1,
+                    modifier = Modifier.semantics { stateDescription = label },
+                )
+            }
+        },
+        trailingContent = { Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) },
+        colors = settingsItemColors(),
+        modifier = modifier,
+    )
 }
 
 @Composable

@@ -14,12 +14,15 @@ by Simon Marquis, see [NOTICE](NOTICE).
 - **Quick Settings tile**: tap to start a timer of the default duration, tap again to stop it.
 - **Notification**: extend, reduce or stop the timer. Dismissing it (possible since Android 14) stops the timer.
 - **App** (launcher, notification tap, or long press on the tile): start a timer of any duration, configure the default
-  duration and the `+` / `−` steps, rewinding, the theme, automation and diagnostics.
+  duration and the `+` / `−` steps, the fade out, rewinding, the theme, automation and diagnostics.
+
+**Fade out**: how long the volume takes to go down when the timer ends, whatever the volume: 30 seconds by default, up
+to a minute, or off to pause right away.
 
 **Rewind to where the fade started** (optional): once paused, playback goes back to where the volume started to fade,
-plus 5% of the fade, and at most a minute. It needs *Notification access*, only to find the playing media: ZzzTimer never
-reads notifications. If the APK was installed from a browser or a file manager, Android may first ask to allow
-*restricted settings*, from ZzzTimer's App info menu (⋮).
+plus 5% of the fade, and at most the fade played at 3× speed. It needs *Notification access*, only to find the playing
+media: ZzzTimer never reads notifications. If the APK was installed from a browser or a file manager, Android may first
+ask to allow *restricted settings*, from ZzzTimer's App info menu (⋮).
 
 ## Automation
 
@@ -55,7 +58,8 @@ default, capped at about 512 KB, and never leaves the device unless exported (se
   removes it at the deadline ([`setTimeoutAfter`](https://developer.android.com/reference/android/app/Notification.Builder#setTimeoutAfter(long))).
   Nothing is persisted, so there is nothing to clean up after a reboot.
 - The deadline is tracked on the monotonic `elapsedRealtime` clock: changing the time or time zone doesn't affect it.
-- When the timer ends, a service fades out and pauses playback. Up to Android 16, the notification
+- When the timer ends, a service fades out and pauses playback (the system may stop it about a minute later, hence the
+  maximum fade). Up to Android 16, the notification
   [`deleteIntent`](https://developer.android.com/reference/android/app/Notification.Builder#setDeleteIntent(android.app.PendingIntent))
   starts it. Since Android 17, [background audio hardening](https://developer.android.com/about/versions/17/changes/bg-audio)
   requires a foreground service, which an exact alarm starts instead (hence the *Alarms & reminders* permission).

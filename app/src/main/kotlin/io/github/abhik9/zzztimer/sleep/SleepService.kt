@@ -19,6 +19,7 @@ import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DeadlineOutcome
 import io.github.abhik9.zzztimer.core.SleepRoutine
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
+import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.timer.TimerNotification
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -31,6 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Runs the [SleepRoutine] when a timer ends. Started by the [io.github.abhik9.zzztimer.timer.AndroidSleepTrigger].
@@ -101,7 +103,12 @@ class SleepService : Service() {
             try {
                 mutex.withLock {
                     val audio = AndroidMediaAudio(getSystemService(AudioManager::class.java), diagnostics)
-                    SleepRoutine(audio, media = { SessionPlayingMedia.find(this@SleepService, diagnostics) }, log = diagnostics).run()
+                    SleepRoutine(
+                        audio = audio,
+                        media = { SessionPlayingMedia.find(this@SleepService, diagnostics) },
+                        fade = SettingsStore.from(this@SleepService).fadeSeconds.seconds,
+                        log = diagnostics,
+                    ).run()
                 }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {

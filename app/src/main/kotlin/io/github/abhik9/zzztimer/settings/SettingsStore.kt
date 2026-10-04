@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.core.content.edit
 import io.github.abhik9.zzztimer.core.DurationSetting
+import io.github.abhik9.zzztimer.core.FadeSetting
 import io.github.abhik9.zzztimer.core.TimerSettings
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +18,7 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 /** Snapshot of all the user settings. */
 data class UserSettings(
     val durations: Map<DurationSetting, Int> = DurationSetting.entries.associateWith { it.defaultMinutes },
+    val fadeSeconds: Int = FadeSetting.DEFAULT_SECONDS,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val automationEnabled: Boolean = true,
@@ -34,6 +36,7 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
     companion object {
         private const val TAG = "SettingsStore"
         private const val FILE = "settings"
+        private const val KEY_FADE = "fade_seconds"
         private const val KEY_THEME = "theme"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AUTOMATION = "automation"
@@ -54,6 +57,11 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
     fun setMinutes(setting: DurationSetting, minutes: Int) = prefs.edit { putInt(setting.key, setting.sanitize(minutes)) }
 
     fun timerSettings(): TimerSettings = TimerSettings.ofMinutes(::minutes)
+
+    /** How long the volume fades out when a timer ends, see [FadeSetting]. */
+    var fadeSeconds: Int
+        get() = FadeSetting.sanitize(read(KEY_FADE, FadeSetting.DEFAULT_SECONDS, prefs::getInt))
+        set(value) = prefs.edit { putInt(KEY_FADE, FadeSetting.sanitize(value)) }
 
     var themeMode: ThemeMode
         get() = read(KEY_THEME, null, prefs::getString)?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
@@ -76,6 +84,7 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
 
     fun snapshot() = UserSettings(
         durations = DurationSetting.entries.associateWith(::minutes),
+        fadeSeconds = fadeSeconds,
         themeMode = themeMode,
         dynamicColor = dynamicColor,
         automationEnabled = automationEnabled,

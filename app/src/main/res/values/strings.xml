@@ -37,6 +37,9 @@
     <string name="settings_range">From %1$s to %2$s</string>
 
     <string name="section_timer_end">When the timer ends</string>
+    <string name="fade_title">Fade out</string>
+    <string name="fade_description">How long the volume takes to go down before playback is paused</string>
+    <string name="fade_off">Off</string>
     <string name="rewind_title">Rewind to where the fade started</string>
     <string name="rewind_description">Once paused, playback goes back to where the volume started to fade. Needs Notification access, only to find the playing media: ZzzTimer doesn’t read your notifications. If Android says it’s restricted, first allow restricted settings from ZzzTimer’s app info menu (⋮).</string>
 
