@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -135,6 +136,31 @@ class SleepRoutineTest {
         SleepRoutine(audio, media = { media }).run()
         assertEquals(listOf("lower", "lower", "pause"), audio.events)
         assertTrue(media.seeks.isEmpty())
+    }
+
+    @Test
+    fun `no fade nor rewind when the volume is already at its minimum`() = runTest {
+        val audio = FakeAudio(volume = 0)
+        val media = FakeMedia(audio, clock = { currentTime })
+        SleepRoutine(audio, media = { media }).run()
+        assertEquals(listOf("pause"), audio.events)
+        assertTrue(media.seeks.isEmpty())
+        assertEquals(0L, currentTime)
+    }
+
+    @Test
+    fun `volume is restored even when rewinding fails`() = runTest {
+        val audio = FakeAudio(volume = 3)
+        val media = object : PlayingMedia {
+            private var reads = 0
+
+            // Readable when the fade starts, gone when it ends.
+            override fun current() = if (reads++ == 0) PlaybackPoint("episode", 100.seconds) else error("session died")
+
+            override fun seekTo(position: Duration) = Unit
+        }
+        assertFailsWith<IllegalStateException> { SleepRoutine(audio, media = { media }).run() }
+        assertEquals(listOf("lower", "lower", "lower", "pause", "set:3"), audio.events)
     }
 
     @Test

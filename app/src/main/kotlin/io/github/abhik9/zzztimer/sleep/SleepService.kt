@@ -21,6 +21,7 @@ import io.github.abhik9.zzztimer.core.SleepRoutine
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.timer.TimerNotification
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -64,7 +65,13 @@ class SleepService : Service() {
             pendingIntent(context, intent(context), foreground, FLAG_NO_CREATE)
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /**
+     * A failing sleep is recorded instead of crashing the app: the routine has already paused playback and restored the
+     * volume as far as it could.
+     */
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, error -> diagnostics.warn("sleep: failed", error) },
+    )
 
     /** Sleeps run one at a time, so that a volume is never restored in the middle of another fade. */
     private val mutex = Mutex()

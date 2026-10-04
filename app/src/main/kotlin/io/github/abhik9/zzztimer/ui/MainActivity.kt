@@ -27,7 +27,7 @@ import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.settings.ThemeMode
-import io.github.abhik9.zzztimer.system.mediaAccessSettingsIntent
+import io.github.abhik9.zzztimer.system.mediaAccessSettingsIntents
 import io.github.abhik9.zzztimer.system.settingsIntent
 import io.github.abhik9.zzztimer.system.startSettings
 import io.github.abhik9.zzztimer.system.toast
@@ -53,8 +53,9 @@ class MainActivity : ComponentActivity() {
     private val notificationPermission = registerForActivityResult(RequestPermission()) { granted ->
         viewModel.refresh()
         diagnostics.record { "permission: notifications granted=$granted" }
-        // Denied without any prompt (e.g. after two refusals): fall back to the settings.
-        if (!granted) openSettings(Requirement.NOTIFICATIONS)
+        // Denied for good (e.g. after two refusals), so the system no longer prompts: only the settings can grant it.
+        val deniedForGood = SDK_INT >= TIRAMISU && !shouldShowRequestPermissionRationale(POST_NOTIFICATIONS)
+        if (!granted && deniedForGood) openSettings(Requirement.NOTIFICATIONS)
     }
 
     private val exportDestination = registerForActivityResult(CreateDocument("text/plain")) { destination ->
@@ -75,7 +76,7 @@ class MainActivity : ComponentActivity() {
                     state = state,
                     actions = viewModel,
                     onResolve = ::resolve,
-                    onAllowMediaAccess = { startSettings(mediaAccessSettingsIntent()) },
+                    onAllowMediaAccess = { startSettings(*mediaAccessSettingsIntents()) },
                     onExportDiagnostics = ::exportDiagnostics,
                 )
             }

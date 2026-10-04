@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.microseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -27,11 +28,7 @@ class SleepTimerTest {
             val started = timer.start(20.minutes).started()
 
             assertEquals(
-                Timer(
-                    deadline = clock.elapsed + 20.minutes.inWholeMilliseconds,
-                    endsAt =
-                    clock.wall + 20.minutes.inWholeMilliseconds,
-                ),
+                Timer(deadline = clock.elapsed + 20.minutes.inWholeMilliseconds, endsAt = clock.wall + 20.minutes.inWholeMilliseconds),
                 started,
             )
             assertEquals(started, display.shown)
@@ -56,6 +53,14 @@ class SleepTimerTest {
         fun `non positive duration stops the timer`() {
             timer.start()
             assertEquals(StartResult.Stopped, timer.start(Duration.ZERO))
+            assertNull(display.shown)
+            assertEquals(1, trigger.disarms)
+        }
+
+        @Test
+        fun `duration under a millisecond stops the timer`() {
+            timer.start()
+            assertEquals(StartResult.Stopped, timer.start(500.microseconds))
             assertNull(display.shown)
             assertEquals(1, trigger.disarms)
         }

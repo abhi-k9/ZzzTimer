@@ -1,13 +1,14 @@
 package io.github.abhik9.zzztimer.core
 
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /** Outcome of an operation that (re)starts the timer. */
 sealed interface StartResult {
     data class Started(val timer: Timer) : StartResult
 
-    /** The timer has been stopped (a non positive duration was requested). */
+    /** The timer has been stopped, e.g. a non positive duration was requested. */
     data object Stopped : StartResult
 
     /** Nothing changed: the timer can't run until [requirement] is resolved. */
@@ -60,24 +61,24 @@ class SleepTimer(
 
     /**
      * Starts a timer of [duration] (capped to [MAX_TIMER_DURATION]), replacing the running one.
-     * A non positive [duration] stops the timer.
+     * A [duration] under a millisecond (e.g. zero or negative) stops the timer.
      */
     fun start(duration: Duration = settings().initial): StartResult = doStart(duration).also { result ->
         log.record { "start($duration): $result" }
     }
 
     private fun doStart(duration: Duration): StartResult {
-        if (!duration.isPositive()) {
+        // In whole milliseconds, the resolution of the clocks: a shorter timer would have ended already.
+        val millis = duration.coerceAtMost(MAX_TIMER_DURATION).inWholeMilliseconds
+        if (millis <= 0) {
             stop()
             return StartResult.Stopped
         }
         missingRequirement()?.let { return StartResult.Blocked(it) }
-        val timeout = duration.coerceAtMost(MAX_TIMER_DURATION)
-        val millis = timeout.inWholeMilliseconds
         val timer = Timer(deadline = clock.elapsedMillis() + millis, endsAt = clock.wallMillis() + millis)
         // Never display a timer that would not pause playback when it ends.
         if (!trigger.arm(timer)) return StartResult.Blocked(Requirement.EXACT_ALARMS)
-        display.show(timer, timeout)
+        display.show(timer, millis.milliseconds)
         onChange()
         return StartResult.Started(timer)
     }

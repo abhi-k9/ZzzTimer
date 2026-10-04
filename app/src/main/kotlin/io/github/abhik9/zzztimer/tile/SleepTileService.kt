@@ -65,14 +65,18 @@ class SleepTileService : TileService() {
 
     private fun resolve(requirement: Requirement) {
         toast(requirement.title)
-        startSettings(settingsIntent(requirement).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), ::startActivityAndCollapseCompat)
+        // Settings can't be displayed on top of the keyguard: the device must be unlocked first.
+        if (isLocked) unlockAndRun { openSettings(requirement) } else openSettings(requirement)
     }
+
+    private fun openSettings(requirement: Requirement) =
+        startSettings(settingsIntent(requirement), start = ::startActivityAndCollapseCompat)
 
     @SuppressLint("StartActivityAndCollapseDeprecated")
     @Suppress("DEPRECATION")
     private fun startActivityAndCollapseCompat(intent: Intent) {
-        // Settings can't be displayed on top of the keyguard: the device must be unlocked first.
-        if (isLocked) return unlockAndRun { startActivityAndCollapseCompat(intent) }
+        // Started from a service: there is no task to start it in.
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (SDK_INT >= UPSIDE_DOWN_CAKE) {
             startActivityAndCollapse(PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE))
         } else {

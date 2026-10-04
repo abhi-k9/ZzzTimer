@@ -64,32 +64,38 @@ class SleepRoutine(
     }
 
     /**
-     * Playback is paused and the volume restored even when cancelled (e.g. when the system stops the service).
+     * Playback is paused and the volume restored even when cancelled (e.g. when the system stops the service). The volume
+     * is restored even when a step fails.
      */
     suspend fun run() {
         // Read at the time of the fade: the user may have changed the volume while the timer was running.
         val volume = audio.volume
-        log.record { "sleep: volume=$volume min=${audio.minVolume} playing=${audio.isPlaying} fixed=${audio.isVolumeFixed}" }
+        val minVolume = audio.minVolume
+        log.record { "sleep: volume=$volume min=$minVolume playing=${audio.isPlaying} fixed=${audio.isVolumeFixed}" }
         // The session playing when the fade started, and where it was. Without a fade, nothing is rewound.
         var fadeStart: Pair<PlayingMedia, PlaybackPoint>? = null
         try {
-            // Pointless when nothing is playing locally, e.g. when casting.
-            if (audio.isPlaying && !audio.isVolumeFixed) {
+            // Pointless when nothing is playing locally (e.g. when casting), or when the volume can't go any lower.
+            if (audio.isPlaying && !audio.isVolumeFixed && volume > minVolume) {
                 media()?.let { session ->
                     val point = session.current()
                     log.record { "rewind: fade starts at $point" }
                     if (point != null) fadeStart = session to point
                 }
-                fadeOut()
+                fadeOut(minVolume)
             }
         } finally {
             withContext(NonCancellable) {
-                audio.pause()
-                log.record { "sleep: pause requested, playing=${audio.isPlaying}" }
-                // Lets the player pause before reading where it stopped, and before the volume goes back up.
-                if (fadeStart != null || audio.volume != volume) delay(restoreDelay)
-                fadeStart?.let { (session, start) -> rewind(session, start) }
-                restore(volume)
+                try {
+                    audio.pause()
+                    log.record { "sleep: pause requested, playing=${audio.isPlaying}" }
+                    // Lets the player pause before reading where it stopped, and before the volume goes back up.
+                    if (fadeStart != null || audio.volume != volume) delay(restoreDelay)
+                    fadeStart?.let { (session, start) -> rewind(session, start) }
+                } finally {
+                    // Whatever failed before: the volume must never stay low.
+                    restore(volume)
+                }
             }
         }
     }
@@ -126,8 +132,7 @@ class SleepRoutine(
      */
     fun fadeStepDelay(steps: Int): Duration = if (steps <= 0) Duration.ZERO else minOf(maxFadeStep, maxFade / steps)
 
-    private suspend fun fadeOut() {
-        val min = audio.minVolume
+    private suspend fun fadeOut(min: Int) {
         val steps = audio.volume - min
         val stepDelay = fadeStepDelay(steps)
         log.record { "fade: $steps steps of $stepDelay" }

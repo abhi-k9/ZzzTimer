@@ -27,26 +27,37 @@ fun Context.settingsIntent(requirement: Requirement): Intent = when (requirement
         }
 }
 
-/** Where the user grants Notification access to the [MediaAccessService], which lets ZzzTimer rewind the playing media. */
-fun Context.mediaAccessSettingsIntent(): Intent = if (SDK_INT >= VERSION_CODES.R) {
-    Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
-        .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, MediaAccessService.component(this).flattenToString())
-} else {
-    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+/**
+ * Where the user grants Notification access to the [MediaAccessService], which lets ZzzTimer rewind the playing media:
+ * its own screen, or the list of all the notification listeners.
+ */
+fun Context.mediaAccessSettingsIntents(): Array<Intent> {
+    val listeners = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+    return if (SDK_INT >= VERSION_CODES.R) {
+        val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+            .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, MediaAccessService.component(this).flattenToString())
+        arrayOf(detail, listeners)
+    } else {
+        arrayOf(listeners)
+    }
 }
 
-/** Fallback for OEM builds missing a specific settings screen. */
+/** Last resort: OEM builds may lack, or restrict, specific settings screens. */
 private fun Context.appDetailsIntent(): Intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())
 
 /**
- * Starts [intent], or the app details settings when no activity handles it.
+ * Starts the first of [intents] that can be started, or else the app details settings.
  */
-fun Context.startSettings(intent: Intent, start: (Intent) -> Unit = { startActivity(it) }) {
-    try {
-        start(intent)
-    } catch (e: ActivityNotFoundException) {
-        diagnostics.warn("settings: no activity for $intent", e)
-        runCatching { start(appDetailsIntent()) }.onFailure { diagnostics.warn("settings: no app details", it) }
+fun Context.startSettings(vararg intents: Intent, start: (Intent) -> Unit = { startActivity(it) }) {
+    for (intent in listOf(*intents, appDetailsIntent())) {
+        try {
+            start(intent)
+            return
+        } catch (e: ActivityNotFoundException) {
+            diagnostics.warn("settings: no activity for $intent", e)
+        } catch (e: SecurityException) {
+            diagnostics.warn("settings: not allowed to start $intent", e)
+        }
     }
 }
 
