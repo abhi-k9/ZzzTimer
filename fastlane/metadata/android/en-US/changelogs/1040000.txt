@@ -1,0 +1,2 @@
+- New "Fade out" setting: choose how long the volume takes to go down when the timer ends, from off to a minute (30 seconds by default). The fade now lasts that long whatever the volume.
+- Rewinding follows the fade duration: at most the fade played at 3× speed.
