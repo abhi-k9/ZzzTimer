@@ -1,0 +1,4 @@
+- The volume is always restored, even when the playing app fails while rewinding.
+- A failure while pausing playback is recorded in the diagnostics instead of crashing the app.
+- Settings screens missing on some devices fall back to the next best one, also from the Quick Settings tile on the lock screen.
+- Refusing the notification permission once no longer opens the system settings.
