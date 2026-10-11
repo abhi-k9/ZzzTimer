@@ -26,7 +26,7 @@ fun versionCodeOf(major: Int, minor: Int, patch: Int, build: Int): Int {
 /**
  * Release signing is read from Gradle properties or environment variables, so that no secret is ever committed:
  * `zzztimer.signing.storeFile` / `ZZZTIMER_SIGNING_STORE_FILE`, and likewise `storePassword`, `keyAlias`, `keyPassword`.
- * Release builds are left unsigned when no store file is configured.
+ * Release builds are left unsigned when no store file is configured. See RELEASING.md.
  */
 fun signingValue(name: String): String? =
     providers.gradleProperty("zzztimer.signing.$name")

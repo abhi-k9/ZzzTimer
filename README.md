@@ -79,32 +79,9 @@ Requires JDK 17+ and the Android SDK (API 37). `./gradlew assembleDebug test lin
 Kotlin warnings are errors); CI also runs [ktlint](https://pinterest.github.io/ktlint/) and
 [zizmor](https://docs.zizmor.sh/).
 
-Release builds are signed only when a signing configuration is provided. Never commit keystores or passwords:
+Signing and publishing a release: see [RELEASING.md](RELEASING.md).
 
-| Gradle property (`zzztimer.signing.…`) | Environment variable            | Release workflow secret                          |
-|----------------------------------------|---------------------------------|--------------------------------------------------|
-| `storeFile`                            | `ZZZTIMER_SIGNING_STORE_FILE`   | `ZZZTIMER_SIGNING_KEYSTORE_BASE64` (base64 file) |
-| `storePassword`                        | `ZZZTIMER_SIGNING_STORE_PASSWORD` | `ZZZTIMER_SIGNING_STORE_PASSWORD`              |
-| `keyAlias`                             | `ZZZTIMER_SIGNING_KEY_ALIAS`    | `ZZZTIMER_SIGNING_KEY_ALIAS`                     |
-| `keyPassword`                          | `ZZZTIMER_SIGNING_KEY_PASSWORD` | `ZZZTIMER_SIGNING_KEY_PASSWORD`                  |
-
-## Releasing
-
-Bump the version in `app/build.gradle.kts` on `main`, then run the [release workflow](.github/workflows/release.yml) on
-`main` (Actions → Release → Run workflow). It creates the `vX.Y.Z` tag, builds from scratch, tests, lints, signs, checks
-the signing certificate, attests the build provenance, and publishes the APK with its checksum. Pushing a tag that points
-to `main` works too.
-
-The workflow runs in the `release` environment, which can hold the secrets and protection rules (Settings →
-Environments). The keystore is created once, and every update must be signed with it; if it ever changes, update
-`SIGNING_CERT_SHA256` in the workflow:
-
-```bash
-keytool -genkeypair -keystore zzztimer-release.jks -alias zzztimer -keyalg RSA -keysize 4096 -validity 10000
-base64 -w 0 zzztimer-release.jks   # macOS: base64 -i zzztimer-release.jks
-```
-
-### Verifying a download
+## Verifying a download
 
 - Signing certificate (SHA-256), checked by `apksigner verify --print-certs`, AppVerifier or Obtainium:
   `95:E5:0C:F0:03:27:57:2F:5E:89:C2:25:AF:ED:42:FF:1A:06:3E:F1:2E:3E:ED:07:5F:F3:AB:4B:67:9C:F0:08`
