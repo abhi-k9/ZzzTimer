@@ -11,10 +11,11 @@ registries:
     url: https://plugins.gradle.org/m2/
 
 updates:
+  # Monthly, each ecosystem in a single pull request, to keep CI runs down. Security updates still come right away.
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     # Supply chain: a new version is only proposed once it has been public for a week.
     cooldown:
       default-days: 7
@@ -26,14 +27,10 @@ updates:
     directory: /
     registries: "*"
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 7
     groups:
-      # Released together, and must stay aligned.
-      kotlin:
-        patterns: [ "org.jetbrains.kotlin*" ]
-      androidx:
-        patterns: [ "androidx.*" ]
-      junit:
-        patterns: [ "org.junit*" ]
+      # Also keeps the Kotlin, AndroidX and JUnit artifacts, released together, aligned.
+      gradle:
+        patterns: [ "*" ]
