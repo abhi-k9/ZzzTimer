@@ -36,8 +36,11 @@ class SleepTimer(
     private val trigger: SleepTrigger,
     private val clock: DeviceClock,
     private val settings: () -> TimerSettings,
-    /** Called after every change of the timer, e.g. to refresh the Quick Settings tile. */
-    private val onChange: () -> Unit = {},
+    /**
+     * Called after every change of the timer with the running one, `null` when there is none, e.g. to refresh the
+     * controls showing it. The [display] may take a moment to reflect a change: this is the reliable state.
+     */
+    private val onChange: (Timer?) -> Unit = {},
     private val log: EventLog = EventLog.NONE,
 ) {
 
@@ -79,7 +82,7 @@ class SleepTimer(
         // Never display a timer that would not pause playback when it ends.
         if (!trigger.arm(timer)) return StartResult.Blocked(Requirement.EXACT_ALARMS)
         display.show(timer, millis.milliseconds)
-        onChange()
+        onChange(timer)
         return StartResult.Started(timer)
     }
 
@@ -88,7 +91,7 @@ class SleepTimer(
         // Removing the display does not signal the deadline: the trigger must be disarmed explicitly.
         display.hide()
         trigger.disarm()
-        onChange()
+        onChange(null)
     }
 
     fun toggle(): StartResult = if (current() == null) {
@@ -138,14 +141,18 @@ class SleepTimer(
         if (!early) {
             // The display normally removes itself at the deadline, but the trigger may fire first: never leave a timer
             // displayed once it has ended.
-            if (deadline > 0 && current?.deadline == deadline) display.hide()
-            onChange()
+            if (deadline > 0 && current?.deadline == deadline) {
+                display.hide()
+                onChange(null)
+            } else {
+                onChange(current)
+            }
             return DeadlineOutcome.SLEEP
         }
         // Dismissed by the user: cancel the timer, unless a new one has been started since (which re-armed the trigger).
         if (current == null) {
             trigger.disarm()
-            onChange()
+            onChange(null)
         }
         return DeadlineOutcome.DISMISSED
     }

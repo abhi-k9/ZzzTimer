@@ -3,11 +3,11 @@ package io.github.abhik9.zzztimer
 import android.app.Application
 import android.content.Context
 import android.os.SystemClock
+import io.github.abhik9.zzztimer.control.requestControlsUpdate
 import io.github.abhik9.zzztimer.core.DeviceClock
 import io.github.abhik9.zzztimer.core.SleepTimer
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
-import io.github.abhik9.zzztimer.tile.requestTileUpdate
 import io.github.abhik9.zzztimer.timer.AndroidSleepTrigger
 import io.github.abhik9.zzztimer.timer.TimerNotification
 
@@ -32,7 +32,7 @@ fun Context.sleepTimer(): SleepTimer {
         trigger = trigger,
         clock = SystemDeviceClock,
         settings = settings::timerSettings,
-        onChange = context::requestTileUpdate,
+        onChange = context::requestControlsUpdate,
         log = context.diagnostics,
     )
 }

@@ -17,7 +17,17 @@ class SleepTimerTest {
     private val trigger = FakeTrigger()
     private var settings = TimerSettings(initial = 30.minutes, increment = 10.minutes, decrement = 5.minutes)
     private var changes = 0
-    private val timer = SleepTimer(display, trigger, clock, { settings }, onChange = { changes++ })
+    private var changedTo: Timer? = null
+    private val timer = SleepTimer(
+        display,
+        trigger,
+        clock,
+        { settings },
+        onChange = {
+            changes++
+            changedTo = it
+        },
+    )
 
     private fun StartResult?.started(): Timer = assertIs<StartResult.Started>(this).timer
 
@@ -35,6 +45,7 @@ class SleepTimerTest {
             assertEquals(20.minutes, display.timeout)
             assertEquals(started, trigger.armed)
             assertEquals(1, changes)
+            assertEquals(started, changedTo)
         }
 
         @Test
@@ -74,6 +85,7 @@ class SleepTimerTest {
             assertNull(trigger.armed)
             assertNull(timer.current())
             assertEquals(2, changes)
+            assertNull(changedTo)
         }
 
         @Test
@@ -228,6 +240,7 @@ class SleepTimerTest {
             clock.advance(20.minutes)
             assertEquals(DeadlineOutcome.SLEEP, timer.onDeadline(started.deadline))
             assertNull(display.shown)
+            assertNull(changedTo)
             assertEquals(0, trigger.disarms)
         }
 
@@ -239,6 +252,7 @@ class SleepTimerTest {
             assertEquals(DeadlineOutcome.SLEEP, timer.onDeadline(old.deadline))
             assertEquals(new, display.shown)
             assertEquals(new, trigger.armed)
+            assertEquals(new, changedTo)
         }
 
         @Test
@@ -259,6 +273,7 @@ class SleepTimerTest {
             assertEquals(DeadlineOutcome.DISMISSED, timer.onDeadline(started.deadline))
             assertEquals(1, trigger.disarms)
             assertNull(trigger.armed)
+            assertNull(changedTo)
         }
 
         @Test

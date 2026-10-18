@@ -6,10 +6,13 @@ import android.text.format.DateFormat
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.ControlState
 import io.github.abhik9.zzztimer.core.Requirement
+import io.github.abhik9.zzztimer.core.Timer
 import io.github.abhik9.zzztimer.system.settingsIntent
 import io.github.abhik9.zzztimer.system.startSettings
 import io.github.abhik9.zzztimer.system.title
 import io.github.abhik9.zzztimer.system.toast
+import io.github.abhik9.zzztimer.tile.requestTileUpdate
+import io.github.abhik9.zzztimer.widget.SleepWidget
 import java.util.Date
 
 /*
@@ -31,4 +34,12 @@ fun Context.controlLabel(state: ControlState): String = when (state) {
 fun Context.resolveFromControl(requirement: Requirement, open: (() -> Unit) -> Unit = { it() }, start: (Intent) -> Unit) {
     toast(requirement.title)
     open { startSettings(settingsIntent(requirement), start = start) }
+}
+
+/** Refreshes the controls showing the timer, after it changed to [timer] (`null` when there is none). */
+fun Context.requestControlsUpdate(timer: Timer?) {
+    // The system asks the tile to render, when it is visible.
+    requestTileUpdate()
+    // Widgets render right away, with the new state: the notification may briefly still be reported once cancelled.
+    SleepWidget.update(this, ControlState.of(timer))
 }
