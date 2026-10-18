@@ -1,0 +1,1 @@
+- New home screen widget: like the Quick Settings tile, a tap starts the default timer or stops the running one, and it shows until when the timer runs. 1×1 by default and resizable, with Material You colors on Android 12 and later.
