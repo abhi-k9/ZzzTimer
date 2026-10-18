@@ -10,18 +10,13 @@ import android.os.Build.VERSION_CODES.Q
 import android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import android.text.format.DateFormat
-import io.github.abhik9.zzztimer.R
-import io.github.abhik9.zzztimer.core.Requirement
-import io.github.abhik9.zzztimer.core.StartResult
-import io.github.abhik9.zzztimer.core.Timer
+import io.github.abhik9.zzztimer.control.controlLabel
+import io.github.abhik9.zzztimer.control.resolveFromControl
+import io.github.abhik9.zzztimer.core.ControlOutcome
+import io.github.abhik9.zzztimer.core.ControlState
+import io.github.abhik9.zzztimer.core.toggleControl
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.sleepTimer
-import io.github.abhik9.zzztimer.system.settingsIntent
-import io.github.abhik9.zzztimer.system.startSettings
-import io.github.abhik9.zzztimer.system.title
-import io.github.abhik9.zzztimer.system.toast
-import java.util.Date
 
 /** Asks the system to refresh the tile. */
 fun Context.requestTileUpdate() {
@@ -38,39 +33,27 @@ fun Context.requestTileUpdate() {
  */
 class SleepTileService : TileService() {
 
-    override fun onStartListening() = render(sleepTimer().current())
+    override fun onStartListening() = render(ControlState.of(sleepTimer().current()))
 
     override fun onClick() {
         diagnostics.record { "tile: click, locked=$isLocked" }
-        when (val result = sleepTimer().toggle()) {
-            is StartResult.Started -> render(result.timer)
-            // The notification may briefly still be reported as active once cancelled: don't query it.
-            StartResult.Stopped -> render(null)
-            is StartResult.Blocked -> resolve(result.requirement)
+        when (val outcome = sleepTimer().toggleControl()) {
+            is ControlOutcome.Show -> render(outcome.state)
+            is ControlOutcome.Resolve -> resolveFromControl(
+                outcome.requirement,
+                // Settings can't be displayed on top of the keyguard: the device must be unlocked first.
+                open = { if (isLocked) unlockAndRun(it) else it() },
+                start = ::startActivityAndCollapseCompat,
+            )
         }
     }
 
-    private fun render(timer: Timer?) {
+    private fun render(state: ControlState) {
         val tile = qsTile ?: return
-        tile.state = if (timer == null) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
-        if (SDK_INT >= Q) {
-            tile.subtitle = if (timer == null) {
-                getString(R.string.tile_subtitle)
-            } else {
-                getString(R.string.tile_subtitle_running, DateFormat.getTimeFormat(this).format(Date(timer.endsAt)))
-            }
-        }
+        tile.state = if (state is ControlState.Running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+        if (SDK_INT >= Q) tile.subtitle = controlLabel(state)
         tile.updateTile()
     }
-
-    private fun resolve(requirement: Requirement) {
-        toast(requirement.title)
-        // Settings can't be displayed on top of the keyguard: the device must be unlocked first.
-        if (isLocked) unlockAndRun { openSettings(requirement) } else openSettings(requirement)
-    }
-
-    private fun openSettings(requirement: Requirement) =
-        startSettings(settingsIntent(requirement), start = ::startActivityAndCollapseCompat)
 
     @SuppressLint("StartActivityAndCollapseDeprecated")
     @Suppress("DEPRECATION")
