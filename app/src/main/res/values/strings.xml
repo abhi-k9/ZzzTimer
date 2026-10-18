@@ -5,6 +5,10 @@
     <string name="tile_subtitle">Tap to start</string>
     <string name="tile_subtitle_running">Until %1$s</string>
 
+    <!-- Home screen widget -->
+    <string name="widget_description">Start or stop the sleep timer from the home screen</string>
+    <string name="widget_content_description">Sleep timer, %1$s</string>
+
     <!-- Notification -->
     <string name="notification_channel_name">Running timer</string>
     <string name="notification_channel_description">Shows the remaining time, and lets you extend, reduce or stop the timer.</string>

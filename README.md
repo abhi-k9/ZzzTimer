@@ -12,6 +12,7 @@ by Simon Marquis, see [NOTICE](NOTICE).
 ## Usage
 
 - **Quick Settings tile**: tap to start a timer of the default duration, tap again to stop it.
+- **Home screen widget**: the same as the tile, and shows until when the timer runs. 1×1 by default, resizable.
 - **Notification**: extend, reduce or stop the timer. Dismissing it (possible since Android 14) stops the timer.
 - **App** (launcher, notification tap, or long press on the tile): start a timer of any duration, configure the default
   duration and the `+` / `−` steps, the fade out, rewinding, the theme, automation and diagnostics.

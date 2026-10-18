@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home screen widget, without dynamic colors: the app's night-sky indigo palette (see Theme.kt). -->
+    <color name="widget_background">#FFEFEDF4</color>
+    <color name="widget_on_background">#FF1B1B21</color>
+    <color name="widget_on_background_variant">#FF46464F</color>
+    <color name="widget_active">#FF4F5B92</color>
+    <color name="widget_on_active">#FFFFFFFF</color>
+    <color name="widget_idle">#FFE0E1F9</color>
+    <color name="widget_on_idle">#FF434659</color>
+</resources>

@@ -70,6 +70,25 @@
             </intent-filter>
         </service>
 
+        <!-- Home screen widget. Exported to receive the updates of the system, which are only renderings. -->
+        <receiver
+            android:name=".widget.SleepWidget"
+            android:exported="true"
+            android:label="@string/app_name"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/sleep_widget_info" />
+        </receiver>
+
+        <!-- Widget taps: only reachable through the widget's own PendingIntent. -->
+        <receiver
+            android:name=".widget.WidgetTapReceiver"
+            android:exported="false" />
+
         <!-- Notification actions: only reachable through the app's own PendingIntents. -->
         <receiver
             android:name=".timer.TimerActionReceiver"

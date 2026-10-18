@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home screen widget: dynamic colors, from the wallpaper. -->
+    <color name="widget_background">@android:color/system_neutral1_50</color>
+    <color name="widget_on_background">@android:color/system_neutral1_900</color>
+    <color name="widget_on_background_variant">@android:color/system_neutral2_700</color>
+    <color name="widget_active">@android:color/system_accent1_600</color>
+    <color name="widget_on_active">@android:color/system_accent1_0</color>
+    <color name="widget_idle">@android:color/system_accent2_100</color>
+    <color name="widget_on_idle">@android:color/system_accent2_700</color>
+</resources>
