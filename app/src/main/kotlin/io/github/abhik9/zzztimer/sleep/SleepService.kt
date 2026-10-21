@@ -143,7 +143,7 @@ class SleepService : Service() {
         // startForeground() must be called right away, whatever the extras.
         val notification = IntentCompat.getParcelableExtra(intent, EXTRA_NOTIFICATION, Notification::class.java)
         val id = if (notification != null) intent.getIntExtra(EXTRA_NOTIFICATION_ID, NOTIFICATION_ID) else NOTIFICATION_ID
-        held = enterForeground(id, notification ?: sleepingNotification(), FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        held = enterForeground(id, notification ?: sleepingNotification(), mediaPlayback = true)
         diagnostics.record { "service: hold #$startId, held=$held" }
         stopWhenIdle()
     }
@@ -154,8 +154,7 @@ class SleepService : Service() {
         diagnostics.record { "service: start #$startId, foreground=$foreground, held=$held, deadline=$deadline, running=$runningSleeps" }
         // Must be called right away when started with `startForegroundService()`. A held service stays a media
         // playback one, which may fade out (see hold()). Its timer notification is replaced: the timer has ended.
-        val type = if (held) FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
-        if (foreground || held) enterForeground(NOTIFICATION_ID, sleepingNotification(), type)
+        if (foreground || held) enterForeground(NOTIFICATION_ID, sleepingNotification(), mediaPlayback = held)
         // The hold ends with this sleep.
         held = false
         // Timer operations run on the main thread, see SleepTimer.
@@ -216,9 +215,13 @@ class SleepService : Service() {
         .setOngoing(true)
         .build()
 
-    /** @return whether the service is now in the foreground. */
-    private fun enterForeground(id: Int, notification: Notification, type: Int): Boolean {
+    /**
+     * @param mediaPlayback whether the service runs as a media playback one (held), otherwise as a short service.
+     * @return whether the service is now in the foreground.
+     */
+    private fun enterForeground(id: Int, notification: Notification, mediaPlayback: Boolean): Boolean {
         if (SDK_INT < UPSIDE_DOWN_CAKE) return false
+        val type = if (mediaPlayback) FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
         return try {
             startForeground(id, notification, type)
             true
