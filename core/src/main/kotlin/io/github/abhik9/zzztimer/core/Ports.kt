@@ -18,7 +18,7 @@ interface TimerDisplay {
     /** Displays [timer], replacing the current one. The display must remove itself after [timeout]. */
     fun show(timer: Timer, timeout: Duration)
 
-    /** Removes the displayed timer. This must not trigger the sleep. */
+    /** Removes the displayed timer, if any, and what it holds. This must not trigger the sleep. */
     fun hide()
 }
 

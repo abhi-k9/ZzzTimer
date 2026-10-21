@@ -20,6 +20,9 @@ internal sealed interface AndroidSleepTrigger : SleepTrigger {
     /** `deleteIntent` of the notification, sent when it times out or is dismissed by the user. */
     fun deleteIntent(timer: Timer): PendingIntent
 
+    /** Whether the [SleepService] must be held in the foreground while the timer runs, see [SleepService.hold]. */
+    val needsHeldService: Boolean
+
     companion object {
         /**
          * Android 17 [background audio hardening](https://developer.android.com/about/versions/17/changes/bg-audio)
@@ -35,6 +38,7 @@ internal sealed interface AndroidSleepTrigger : SleepTrigger {
  * system allows while it sends the intent. No permission needed.
  */
 private class NotificationTimeoutTrigger(private val context: Context) : AndroidSleepTrigger {
+    override val needsHeldService = false
     override fun isPermitted() = true
     override fun arm(timer: Timer) = true
     override fun disarm() = Unit
@@ -44,12 +48,15 @@ private class NotificationTimeoutTrigger(private val context: Context) : Android
 /**
  * Since Android 17, lowering the volume requires a foreground service, which a notification `deleteIntent` is not
  * allowed to start. An exact alarm starts [SleepService] as a foreground service instead, and the `deleteIntent` only
- * detects user dismissals (see [io.github.abhik9.zzztimer.core.SleepTimer.onDeadline]).
+ * detects user dismissals (see [io.github.abhik9.zzztimer.core.SleepTimer.onDeadline]). The service is also held in the
+ * foreground while the timer runs: one started by an alarm alone may not lower the volume.
  */
 @RequiresApi(CINNAMON_BUN)
 private class ExactAlarmTrigger(private val context: Context) : AndroidSleepTrigger {
 
     private val alarms = context.getSystemService(AlarmManager::class.java)
+
+    override val needsHeldService = true
 
     override fun isPermitted() = alarms.canScheduleExactAlarms()
 

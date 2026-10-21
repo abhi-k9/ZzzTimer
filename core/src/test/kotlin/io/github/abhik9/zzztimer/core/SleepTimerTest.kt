@@ -271,6 +271,8 @@ class SleepTimerTest {
             clock.advance(5.minutes)
             display.hide() // dismissed by the user
             assertEquals(DeadlineOutcome.DISMISSED, timer.onDeadline(started.deadline))
+            // Also releases what the display holds for the timer.
+            assertEquals(2, display.hides)
             assertEquals(1, trigger.disarms)
             assertNull(trigger.armed)
             assertNull(changedTo)

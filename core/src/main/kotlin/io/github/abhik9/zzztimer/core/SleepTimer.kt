@@ -151,6 +151,8 @@ class SleepTimer(
         }
         // Dismissed by the user: cancel the timer, unless a new one has been started since (which re-armed the trigger).
         if (current == null) {
+            // Already removed, but the display may hold resources for it.
+            display.hide()
             trigger.disarm()
             onChange(null)
         }

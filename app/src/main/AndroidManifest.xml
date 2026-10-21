@@ -13,6 +13,11 @@
         android:name="android.permission.FOREGROUND_SERVICE"
         android:minSdkVersion="37"
         tools:ignore="ForegroundServicesPolicy" />
+    <!-- Since Android 17, the sleep service is also held in the foreground while a timer runs, see SleepService.hold() -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        android:minSdkVersion="37"
+        tools:ignore="ForegroundServicesPolicy" />
 
     <application
         android:name=".ZzzTimerApp"
@@ -57,7 +62,7 @@
         <service
             android:name=".sleep.SleepService"
             android:exported="false"
-            android:foregroundServiceType="shortService" />
+            android:foregroundServiceType="shortService|mediaPlayback" />
 
         <!-- Optional Notification access, only to rewind the playing media: see MediaAccessService.kt -->
         <service

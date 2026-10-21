@@ -17,6 +17,7 @@ class FakeClock(var wall: Long = 1_000_000L, var elapsed: Long = 50_000L) : Devi
 class FakeDisplay(var available: Boolean = true) : TimerDisplay {
     var shown: Timer? = null
     var timeout: Duration? = null
+    var hides = 0
 
     override fun isAvailable() = available
     override fun current() = shown
@@ -27,6 +28,7 @@ class FakeDisplay(var available: Boolean = true) : TimerDisplay {
     }
 
     override fun hide() {
+        hides++
         shown = null
         timeout = null
     }

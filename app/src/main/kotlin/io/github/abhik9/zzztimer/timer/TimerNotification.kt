@@ -19,6 +19,7 @@ import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.Timer
 import io.github.abhik9.zzztimer.core.TimerDisplay
 import io.github.abhik9.zzztimer.settings.SettingsStore
+import io.github.abhik9.zzztimer.sleep.SleepService
 import io.github.abhik9.zzztimer.ui.MainActivity
 import java.util.Date
 import kotlin.time.Duration
@@ -36,8 +37,12 @@ internal class TimerNotification(
 
     companion object {
         const val CHANNEL_ID = "timer"
-        private const val NOTIFICATION_TAG = "timer"
+
+        /** Without tag: since Android 17 the notification is also the one of the held SleepService, see [show]. */
         private const val ID = 1
+
+        /** Tag of the notification before 1.5.1, still recognized and removed after an update. */
+        private const val LEGACY_TAG = "timer"
 
         /** Called at every app start: creating an existing channel only updates its texts, never the user's choices. */
         fun createChannel(context: Context) {
@@ -56,18 +61,24 @@ internal class TimerNotification(
         manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL_ID)?.importance != IMPORTANCE_NONE
 
     override fun current(): Timer? {
-        val notification =
-            manager.activeNotifications.firstOrNull { it.tag == NOTIFICATION_TAG && it.id == ID }?.notification ?: return null
+        val notification = manager.activeNotifications.firstOrNull { it.id == ID }?.notification ?: return null
         val deadline = notification.extras.getLong(EXTRA_DEADLINE, 0L)
         return if (deadline > 0L) Timer(deadline = deadline, endsAt = notification.`when`) else null
     }
 
     override fun show(timer: Timer, timeout: Duration) {
-        manager.notify(NOTIFICATION_TAG, ID, build(timer, timeout))
+        val notification = build(timer, timeout)
+        manager.notify(ID, notification)
+        if (trigger.needsHeldService) SleepService.hold(context, ID, notification)
     }
 
-    // Cancelling the notification from the app does not send its `deleteIntent`.
-    override fun hide() = manager.cancel(NOTIFICATION_TAG, ID)
+    // Cancelling the notification from the app does not send its `deleteIntent`. The one of the held service is only
+    // removed when the service is released.
+    override fun hide() {
+        manager.cancel(ID)
+        manager.cancel(LEGACY_TAG, ID)
+        if (trigger.needsHeldService) SleepService.release(context)
+    }
 
     private fun build(timer: Timer, timeout: Duration): Notification {
         val increment = settings.minutes(DurationSetting.INCREMENT)

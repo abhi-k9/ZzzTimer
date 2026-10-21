@@ -63,7 +63,9 @@ default, capped at about 512 KB, and never leaves the device unless exported (se
   maximum fade). Up to Android 16, the notification
   [`deleteIntent`](https://developer.android.com/reference/android/app/Notification.Builder#setDeleteIntent(android.app.PendingIntent))
   starts it. Since Android 17, [background audio hardening](https://developer.android.com/about/versions/17/changes/bg-audio)
-  requires a foreground service, which an exact alarm starts instead (hence the *Alarms & reminders* permission).
+  requires a foreground service, which an exact alarm starts instead (hence the *Alarms & reminders* permission). Only a
+  service started while you use ZzzTimer (app, tile, widget or notification) may lower the volume, so it is started with
+  the timer, and kept running with its notification until it ends. Timers started by automation pause without fading.
 - A signal received well before the deadline means the notification was dismissed: the timer is cancelled instead.
 - To rewind, the service reads the position of the playing [media session](https://developer.android.com/reference/android/media/session/MediaController)
   when the fade starts and when it ends, then seeks back. Positions are in media time, so the playback speed is
