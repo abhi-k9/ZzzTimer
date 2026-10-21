@@ -140,9 +140,17 @@ class SleepRoutine(
         log.record { "fade: $steps steps of $stepDelay" }
         // Bounded: the volume may never reach `min` (user interaction, OEM policies…).
         repeat(steps) {
+            val before = audio.volume
             audio.lowerVolume()
             delay(stepDelay)
-            if (audio.volume <= min) return
+            val now = audio.volume
+            if (now <= min) return
+            // Refused (e.g. Android 17 background audio restrictions, which fail silently), or raised by the user: the
+            // rest of the fade would only delay the pause.
+            if (now >= before) {
+                log.record { "fade: volume not lowered ($before to $now), pausing now" }
+                return
+            }
         }
         log.record { "fade: stopped at volume ${audio.volume}, above the minimum $min" }
     }

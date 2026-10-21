@@ -77,6 +77,15 @@ class SleepRoutineTest {
     }
 
     @Test
+    fun `pauses right away when volume changes are ignored`() = runTest {
+        val audio = FakeAudio(volume = 3, adjustable = false)
+        SleepRoutine(audio).run()
+        assertEquals(listOf("lower", "pause"), audio.events)
+        // A single step of the 30 s fade, instead of the whole fade.
+        assertEquals(10_000L, currentTime)
+    }
+
+    @Test
     fun `volume stays low when the player ignores the pause`() = runTest {
         val audio = FakeAudio(volume = 2, pausable = false)
         SleepRoutine(audio).run()

@@ -56,6 +56,8 @@ class FakeAudio(
     override val isVolumeFixed: Boolean = false,
     /** Whether the player honors [pause]. */
     private val pausable: Boolean = true,
+    /** Whether the system honors volume changes. */
+    private val adjustable: Boolean = true,
 ) : MediaAudio {
     val events = mutableListOf<String>()
 
@@ -63,7 +65,7 @@ class FakeAudio(
     var onPause: () -> Unit = {}
 
     override fun lowerVolume() {
-        volume = (volume - 1).coerceAtLeast(minVolume)
+        if (adjustable) volume = (volume - 1).coerceAtLeast(minVolume)
         events += "lower"
     }
 
