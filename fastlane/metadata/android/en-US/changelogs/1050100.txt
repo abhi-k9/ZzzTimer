@@ -1,0 +1,2 @@
+- Android 17: the volume fades out again. Timers started from the app, the tile, the widget or the notification keep a service running until they end, which Android 17 requires to lower the volume.
+- When the volume can't be lowered (e.g. timers started by automation on Android 17), playback is paused right away instead of at the end of the fade.
