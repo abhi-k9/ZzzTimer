@@ -10,14 +10,13 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- The warning that the timer ends soon. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- The sleep service runs in the foreground while it watches the end of a timer (shake to keep listening), and
+         since Android 17 while a timer runs, see SleepService.kt -->
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE"
-        android:minSdkVersion="37"
         tools:ignore="ForegroundServicesPolicy" />
-    <!-- Since Android 17, the sleep service is also held in the foreground while a timer runs, see SleepService.hold() -->
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
-        android:minSdkVersion="37"
         tools:ignore="ForegroundServicesPolicy" />
 
     <application

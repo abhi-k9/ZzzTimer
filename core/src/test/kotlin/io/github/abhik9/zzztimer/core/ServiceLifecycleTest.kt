@@ -64,6 +64,61 @@ class ServiceLifecycleTest {
     }
 
     @Test
+    fun `watching keeps the service in the long foreground until the sleep is done`() {
+        lifecycle.onWatch(deadline = 42)
+        assertFalse(lifecycle.canStop)
+        assertEquals(ForegroundMode.LONG, lifecycle.onDeadline(requested = false))
+        lifecycle.onSleepStarted()
+        assertEquals(42L, lifecycle.watched)
+        lifecycle.onSleepFinished()
+        assertNull(lifecycle.watched)
+        assertTrue(lifecycle.canStop)
+    }
+
+    @Test
+    fun `a shake before the deadline extends the watched timer only`() {
+        lifecycle.onWatch(deadline = 42)
+        assertEquals(ShakeAction.EXTEND, lifecycle.onShake(current = 42))
+        assertTrue(lifecycle.canStop)
+        lifecycle.onWatch(deadline = 42)
+        assertEquals(ShakeAction.NONE, lifecycle.onShake(current = 99))
+        assertEquals(ShakeAction.NONE, lifecycle.onShake(current = null))
+    }
+
+    @Test
+    fun `a shake during the fade stops it`() {
+        lifecycle.onWatch(deadline = 42)
+        lifecycle.onDeadline(requested = true)
+        lifecycle.onSleepStarted()
+        assertEquals(ShakeAction.STOP_SLEEP, lifecycle.onShake(current = null))
+        // Once only.
+        assertEquals(ShakeAction.NONE, lifecycle.onShake(current = null))
+    }
+
+    @Test
+    fun `watching ends with a release, a dismissal, or when it expires`() {
+        lifecycle.onWatch(deadline = 42)
+        lifecycle.onRelease()
+        assertTrue(lifecycle.canStop)
+        lifecycle.onWatch(deadline = 42)
+        lifecycle.onNoSleep()
+        assertTrue(lifecycle.canStop)
+        lifecycle.onWatch(deadline = 42)
+        lifecycle.onWatchExpired(deadline = 7)
+        assertFalse(lifecycle.canStop)
+        lifecycle.onWatchExpired(deadline = 42)
+        assertTrue(lifecycle.canStop)
+    }
+
+    @Test
+    fun `an expired watch lets a running sleep be stopped`() {
+        lifecycle.onWatch(deadline = 42)
+        lifecycle.onSleepStarted()
+        lifecycle.onWatchExpired(deadline = 42)
+        assertEquals(ShakeAction.STOP_SLEEP, lifecycle.onShake(current = null))
+    }
+
+    @Test
     fun `sleeps are counted`() {
         lifecycle.onSleepStarted()
         lifecycle.onSleepStarted()

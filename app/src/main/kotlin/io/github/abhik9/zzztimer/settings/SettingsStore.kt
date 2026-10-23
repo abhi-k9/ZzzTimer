@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.core.content.edit
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.FadeSetting
+import io.github.abhik9.zzztimer.core.ShakeSetting
 import io.github.abhik9.zzztimer.core.TimerSettings
 import io.github.abhik9.zzztimer.core.WarningSetting
 import io.github.abhik9.zzztimer.core.WarningVibration
@@ -24,6 +25,8 @@ data class UserSettings(
     val fadeSeconds: Int = FadeSetting.DEFAULT_SECONDS,
     val warningVibration: WarningVibration = WarningVibration.DEFAULT,
     val warningMinutes: Int = WarningSetting.DEFAULT_MINUTES,
+    val shakeEnabled: Boolean = false,
+    val shakeLevel: Int = ShakeSetting.DEFAULT_LEVEL,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val automationEnabled: Boolean = true,
@@ -44,6 +47,8 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         private const val KEY_FADE = "fade_seconds"
         private const val KEY_WARNING_VIBRATION = "warning_vibration"
         private const val KEY_WARNING_MINUTES = "warning_minutes"
+        private const val KEY_SHAKE = "shake"
+        private const val KEY_SHAKE_LEVEL = "shake_level"
         private const val KEY_THEME = "theme"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AUTOMATION = "automation"
@@ -68,7 +73,7 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         TimerSettings.ofMinutes(::minutes).copy(warningLead = if (warns) warningMinutes.minutes else null)
 
     /** Whether the user is warned that a timer ends soon, see [TimerSettings.warningLead]. */
-    private val warns: Boolean get() = warningVibration != WarningVibration.OFF
+    private val warns: Boolean get() = warningVibration != WarningVibration.OFF || shakeEnabled
 
     var warningVibration: WarningVibration
         get() = readEnum(KEY_WARNING_VIBRATION, WarningVibration.DEFAULT)
@@ -77,6 +82,15 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
     var warningMinutes: Int
         get() = WarningSetting.sanitize(read(KEY_WARNING_MINUTES, WarningSetting.DEFAULT_MINUTES, prefs::getInt))
         set(value) = prefs.edit { putInt(KEY_WARNING_MINUTES, WarningSetting.sanitize(value)) }
+
+    /** Whether shaking the phone near the end of a timer keeps playback going, see [ShakeSetting]. */
+    var shakeEnabled: Boolean
+        get() = read(KEY_SHAKE, false, prefs::getBoolean)
+        set(value) = prefs.edit { putBoolean(KEY_SHAKE, value) }
+
+    var shakeLevel: Int
+        get() = ShakeSetting.sanitize(read(KEY_SHAKE_LEVEL, ShakeSetting.DEFAULT_LEVEL, prefs::getInt))
+        set(value) = prefs.edit { putInt(KEY_SHAKE_LEVEL, ShakeSetting.sanitize(value)) }
 
     /** How long the volume fades out when a timer ends, see [FadeSetting]. */
     var fadeSeconds: Int
@@ -111,6 +125,8 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         fadeSeconds = fadeSeconds,
         warningVibration = warningVibration,
         warningMinutes = warningMinutes,
+        shakeEnabled = shakeEnabled,
+        shakeLevel = shakeLevel,
         themeMode = themeMode,
         dynamicColor = dynamicColor,
         automationEnabled = automationEnabled,

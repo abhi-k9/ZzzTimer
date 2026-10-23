@@ -49,6 +49,8 @@ interface MainActions {
     fun setWarningVibration(vibration: WarningVibration)
     fun setWarningMinutes(minutes: Int)
     fun testVibration()
+    fun setShakeEnabled(enabled: Boolean)
+    fun setShakeLevel(level: Int)
     fun testTimerEnd()
     fun setThemeMode(mode: ThemeMode)
     fun setDynamicColor(enabled: Boolean)
@@ -145,6 +147,8 @@ private object PreviewActions : MainActions {
     override fun setWarningVibration(vibration: WarningVibration) = Unit
     override fun setWarningMinutes(minutes: Int) = Unit
     override fun testVibration() = Unit
+    override fun setShakeEnabled(enabled: Boolean) = Unit
+    override fun setShakeLevel(level: Int) = Unit
     override fun testTimerEnd() = Unit
     override fun setThemeMode(mode: ThemeMode) = Unit
     override fun setDynamicColor(enabled: Boolean) = Unit

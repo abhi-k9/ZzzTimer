@@ -7,6 +7,7 @@ import android.content.Intent
 import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
+import io.github.abhik9.zzztimer.sleep.SleepService
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.system.reportBlocked
 import io.github.abhik9.zzztimer.system.vibrate
@@ -68,8 +69,13 @@ class TimerActionReceiver : BroadcastReceiver() {
             ACTION_STOP -> timer.stop()
             // The sleep itself is triggered by the exact alarm: only dismissals matter here.
             ACTION_DISMISSED -> timer.onDeadline(intent.getLongExtra(EXTRA_DEADLINE, 0L))
-            ACTION_WARN -> if (timer.onWarning(intent.getLongExtra(EXTRA_DEADLINE, 0L))) {
-                context.vibrate(SettingsStore.from(context).warningVibration)
+            ACTION_WARN -> {
+                val deadline = intent.getLongExtra(EXTRA_DEADLINE, 0L)
+                if (timer.onWarning(deadline)) {
+                    val settings = SettingsStore.from(context)
+                    context.vibrate(settings.warningVibration)
+                    if (settings.shakeEnabled) SleepService.watch(context, deadline)
+                }
             }
         }
     }

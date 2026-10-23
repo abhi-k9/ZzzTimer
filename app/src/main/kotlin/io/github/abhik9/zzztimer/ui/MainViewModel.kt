@@ -64,7 +64,7 @@ data class MainUiState(
     val warningOnTime: Boolean = true,
 ) {
     /** Whether the user is warned that a timer ends soon. */
-    val warns: Boolean get() = settings.warningVibration != WarningVibration.OFF
+    val warns: Boolean get() = settings.warningVibration != WarningVibration.OFF || settings.shakeEnabled
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application), MainActions {
@@ -155,6 +155,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application), M
     }
 
     override fun testVibration() = getApplication<Application>().vibrate(settings.warningVibration)
+
+    override fun setShakeEnabled(enabled: Boolean) = perform {
+        settings.shakeEnabled = enabled
+        timer.refresh()
+    }
+
+    override fun setShakeLevel(level: Int) {
+        settings.shakeLevel = level
+    }
 
     override fun setFadeSeconds(seconds: Int) {
         settings.fadeSeconds = seconds

@@ -1,6 +1,5 @@
 package io.github.abhik9.zzztimer.sleep
 
-import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_IMMUTABLE
@@ -13,34 +12,47 @@ import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
 import android.media.AudioManager
 import android.os.Build.VERSION.SDK_INT
+import android.os.Build.VERSION_CODES.Q
 import android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.SystemClock
 import androidx.core.content.IntentCompat
 import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DeadlineOutcome
 import io.github.abhik9.zzztimer.core.ForegroundMode
 import io.github.abhik9.zzztimer.core.ServiceLifecycle
+import io.github.abhik9.zzztimer.core.ShakeAction
 import io.github.abhik9.zzztimer.core.SleepRoutine
+import io.github.abhik9.zzztimer.core.StillAwake
+import io.github.abhik9.zzztimer.core.WarningVibration
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.sleepTimer
+import io.github.abhik9.zzztimer.system.ShakeWatcher
+import io.github.abhik9.zzztimer.system.vibrate
 import io.github.abhik9.zzztimer.timer.TimerNotification
+import io.github.abhik9.zzztimer.ui.MainActivity
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
  * Runs the [SleepRoutine] when a timer ends. Started by the [io.github.abhik9.zzztimer.timer.AndroidSleepTrigger].
- * Since Android 17 it is also held in the foreground while a timer runs, see [hold].
+ * Since Android 17 it is also held in the foreground while a timer runs, see [hold], and it watches the end of a timer
+ * for shakes, see [watch]. [ServiceLifecycle] decides when it runs.
  */
 class SleepService : Service() {
 
@@ -51,6 +63,10 @@ class SleepService : Service() {
         private const val EXTRA_NOTIFICATION_ID = "io.github.abhik9.zzztimer.extra.NOTIFICATION_ID"
         private const val ACTION_HOLD = "io.github.abhik9.zzztimer.sleep.HOLD"
         private const val ACTION_RELEASE = "io.github.abhik9.zzztimer.sleep.RELEASE"
+        private const val ACTION_WATCH = "io.github.abhik9.zzztimer.sleep.WATCH"
+
+        /** Watching ends at the latest that long after the deadline: the longest fade, and more. */
+        private val WATCH_AFTER_DEADLINE = 2.minutes
 
         private fun intent(context: Context) = Intent(context, SleepService::class.java)
 
@@ -96,7 +112,23 @@ class SleepService : Service() {
             }
         }
 
-        /** Ends a [hold]: the service stops, with the timer notification, unless a sleep is running. */
+        /**
+         * The timer of [deadline] ends soon: watches its end, until its sleep is done, so that shaking the phone keeps
+         * playback going (see [ShakeAction]). Sent by the warning alarm, which may start a foreground service.
+         */
+        fun watch(context: Context, deadline: Long) {
+            try {
+                context.startForegroundService(intent(context).setAction(ACTION_WATCH).putExtra(EXTRA_DEADLINE, deadline))
+            } catch (e: IllegalStateException) {
+                // ForegroundServiceStartNotAllowedException: the alarm wasn't exact.
+                context.diagnostics.warn("service: can't watch", e)
+            }
+        }
+
+        /**
+         * Ends a [hold], and the [watch] of the timer end: the service stops, with the timer notification, unless a
+         * sleep is running.
+         */
         fun release(context: Context) {
             try {
                 context.startService(intent(context).setAction(ACTION_RELEASE))
@@ -122,6 +154,12 @@ class SleepService : Service() {
     private val lifecycle = ServiceLifecycle()
     private var lastStartId = 0
 
+    /** The timer notification of the [hold], to stay in the foreground with it. */
+    private var heldNotification: Pair<Int, Notification>? = null
+    private var shakeWatcher: ShakeWatcher? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var watchExpiry: Runnable? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -131,8 +169,10 @@ class SleepService : Service() {
             ACTION_RELEASE -> {
                 diagnostics.record { "service: release #$startId, running=${lifecycle.runningSleeps}" }
                 lifecycle.onRelease()
-                stopWhenIdle()
+                heldNotification = null
+                afterChange()
             }
+            ACTION_WATCH -> watch(intent, startId)
             else -> onDeadline(intent, startId)
         }
         return START_NOT_STICKY
@@ -143,8 +183,46 @@ class SleepService : Service() {
         val notification = IntentCompat.getParcelableExtra(intent, EXTRA_NOTIFICATION, Notification::class.java)
         val id = if (notification != null) intent.getIntExtra(EXTRA_NOTIFICATION_ID, NOTIFICATION_ID) else NOTIFICATION_ID
         lifecycle.onHold(enterForeground(id, notification ?: sleepingNotification(), ForegroundMode.LONG))
+        heldNotification = if (lifecycle.held && notification != null) id to notification else null
         diagnostics.record { "service: hold #$startId, held=${lifecycle.held}" }
-        stopWhenIdle()
+        afterChange()
+    }
+
+    private fun watch(intent: Intent, startId: Int) {
+        val deadline = intent.getLongExtra(EXTRA_DEADLINE, 0L)
+        // startForeground() must be called right away: with the timer notification when held.
+        val (id, notification) = heldNotification ?: (NOTIFICATION_ID to watchNotification())
+        val inForeground = enterForeground(id, notification, ForegroundMode.LONG)
+        val settings = SettingsStore.from(this)
+        if (inForeground && settings.shakeEnabled) {
+            lifecycle.onWatch(deadline)
+            if (shakeWatcher == null) {
+                shakeWatcher = ShakeWatcher(this, settings.shakeLevel, onShake = ::onShake).takeIf { it.start() }
+            }
+            watchExpiry?.let(handler::removeCallbacks)
+            watchExpiry = Runnable {
+                lifecycle.onWatchExpired(deadline)
+                afterChange()
+            }.also { handler.postDelayed(it, deadline - SystemClock.elapsedRealtime() + WATCH_AFTER_DEADLINE.inWholeMilliseconds) }
+        }
+        diagnostics.record { "service: watch #$startId, deadline=$deadline, foreground=$inForeground, shakes=${shakeWatcher != null}" }
+        afterChange()
+    }
+
+    private fun onShake() {
+        val action = lifecycle.onShake(current = sleepTimer().current()?.deadline)
+        diagnostics.record { "shake: $action" }
+        if (action != ShakeAction.NONE) vibrate(WarningVibration.LIGHT)
+        when (action) {
+            ShakeAction.EXTEND -> sleepTimer().extend()
+            ShakeAction.STOP_SLEEP -> {
+                // Playback goes on, at its volume from before the fade, with a new timer.
+                scope.coroutineContext.job.children.forEach { it.cancel(StillAwake()) }
+                sleepTimer().start(SettingsStore.from(this).timerSettings().increment)
+            }
+            ShakeAction.NONE -> Unit
+        }
+        afterChange()
     }
 
     private fun onDeadline(intent: Intent?, startId: Int) {
@@ -154,9 +232,10 @@ class SleepService : Service() {
         // Must be called right away when started with `startForegroundService()`. A held service keeps its foreground
         // type, which may fade out (see hold()). Its timer notification is replaced: the timer has ended.
         lifecycle.onDeadline(requested = foreground)?.let { enterForeground(NOTIFICATION_ID, sleepingNotification(), it) }
+        heldNotification = null
         // Timer operations run on the main thread, see SleepTimer.
-        if (sleepTimer().onDeadline(deadline) == DeadlineOutcome.SLEEP) sleep(deadline)
-        stopWhenIdle()
+        if (sleepTimer().onDeadline(deadline) == DeadlineOutcome.SLEEP) sleep(deadline) else lifecycle.onNoSleep()
+        afterChange()
     }
 
     private fun sleep(deadline: Long) {
@@ -181,15 +260,26 @@ class SleepService : Service() {
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
                     lifecycle.onSleepFinished()
-                    stopWhenIdle()
+                    afterChange()
                 }
             }
         }
     }
 
+    /** Applies a change of the [lifecycle]: stops watching shakes, or the service, when not needed anymore. */
+    private fun afterChange() {
+        if (lifecycle.watched == null) {
+            shakeWatcher?.stop()
+            shakeWatcher = null
+            watchExpiry?.let(handler::removeCallbacks)
+            watchExpiry = null
+        }
+        stopWhenIdle()
+    }
+
     /**
-     * Stops the service (and removes its notification) once every sleep is done and no timer holds it: a signal that
-     * does not need one (e.g. a dismissal) must not interrupt a running fade.
+     * Stops the service (and removes its notification) once every sleep is done and nothing else keeps it: a signal
+     * that does not need one (e.g. a dismissal) must not interrupt a running fade.
      */
     private fun stopWhenIdle() {
         if (!lifecycle.canStop) return
@@ -204,10 +294,22 @@ class SleepService : Service() {
     }
 
     override fun onDestroy() {
+        shakeWatcher?.stop()
+        handler.removeCallbacksAndMessages(null)
         // Cancels a running fade: the routine still pauses playback and restores the volume.
         scope.cancel()
         super.onDestroy()
     }
+
+    /** While watching the end of a timer without hold, e.g. before Android 17. */
+    private fun watchNotification(): Notification = Notification.Builder(this, TimerNotification.CHANNEL_ID)
+        .setCategory(Notification.CATEGORY_SERVICE)
+        .setSmallIcon(R.drawable.ic_tile)
+        .setContentTitle(getString(R.string.app_name))
+        .setContentText(getString(R.string.notification_ends_soon))
+        .setContentIntent(MainActivity.pendingIntent(this))
+        .setOngoing(true)
+        .build()
 
     private fun sleepingNotification(): Notification = Notification.Builder(this, TimerNotification.CHANNEL_ID)
         .setCategory(Notification.CATEGORY_SERVICE)
@@ -219,25 +321,29 @@ class SleepService : Service() {
         .build()
 
     /**
-     * As a media playback foreground service for [ForegroundMode.LONG], a short service otherwise.
+     * As a media playback foreground service for [ForegroundMode.LONG], a short service otherwise (only needed since
+     * Android 17).
      * @return whether the service is now in the foreground.
      */
-    private fun enterForeground(id: Int, notification: Notification, mode: ForegroundMode): Boolean {
-        if (SDK_INT < UPSIDE_DOWN_CAKE) return false
-        val type = when (mode) {
-            ForegroundMode.LONG -> FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-            ForegroundMode.SHORT -> FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
+    private fun enterForeground(id: Int, notification: Notification, mode: ForegroundMode): Boolean = try {
+        when {
+            SDK_INT >= UPSIDE_DOWN_CAKE -> {
+                val type = when (mode) {
+                    ForegroundMode.LONG -> FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                    ForegroundMode.SHORT -> FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
+                }
+                startForeground(id, notification, type)
+            }
+            SDK_INT >= Q -> startForeground(id, notification, FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            else -> startForeground(id, notification)
         }
-        return try {
-            startForeground(id, notification, type)
-            true
-        } catch (e: ForegroundServiceStartNotAllowedException) {
-            // Still try to pause playback: it does not require a foreground service.
-            diagnostics.warn("service: foreground not allowed", e)
-            false
-        } catch (e: SecurityException) {
-            diagnostics.warn("service: foreground type not allowed", e)
-            false
-        }
+        true
+    } catch (e: IllegalStateException) {
+        // ForegroundServiceStartNotAllowedException. Still try to pause playback: it does not require one.
+        diagnostics.warn("service: foreground not allowed", e)
+        false
+    } catch (e: SecurityException) {
+        diagnostics.warn("service: foreground type not allowed", e)
+        false
     }
 }

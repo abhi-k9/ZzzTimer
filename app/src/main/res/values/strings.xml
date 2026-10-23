@@ -13,6 +13,7 @@
     <string name="notification_channel_name">Running timer</string>
     <string name="notification_channel_description">Shows the remaining time, and lets you extend, reduce or stop the timer.</string>
     <string name="notification_sleeping">Pausing playback…</string>
+    <string name="notification_ends_soon">Ends soon: shake the phone to keep listening</string>
 
     <!-- Timer actions -->
     <string name="action_extend">+%1$d min</string>
@@ -49,6 +50,22 @@
     <string name="action_test">Test</string>
     <string name="warning_title">When</string>
     <string name="warning_description">How long before the fade starts</string>
+    <string name="shake_title">Shake to keep listening</string>
+    <string name="shake_description">From the warning until the end of the fade, shaking the phone extends the timer by the “+” step, or stops the fade.</string>
+    <string name="shake_strength_title">Shake strength</string>
+    <string name="shake_strength_description">How hard to shake, so that turning over in bed doesn’t count</string>
+    <string name="shake_level_1">Very gentle</string>
+    <string name="shake_level_2">Gentle</string>
+    <string name="shake_level_3">Firm</string>
+    <string name="shake_level_4">Hard</string>
+    <string name="shake_level_5">Very hard</string>
+    <string name="shake_test_title">Test the shake</string>
+    <string name="shake_test_item_description">See how hard you need to shake, and adjust the strength</string>
+    <string name="shake_test_description">Shake the phone a few times in a row, as you would in bed.</string>
+    <string name="shake_unavailable">This device has no accelerometer: shakes can’t be detected.</string>
+    <string name="shake_test_force">Now %1$s g, needed %2$s g</string>
+    <string name="shake_test_detected">Shake detected (%1$s)</string>
+    <string name="action_done">Done</string>
     <string name="warning_late_title">Allow Alarms &amp; reminders</string>
     <string name="warning_late_description">Without it, Android may warn you late.</string>
 

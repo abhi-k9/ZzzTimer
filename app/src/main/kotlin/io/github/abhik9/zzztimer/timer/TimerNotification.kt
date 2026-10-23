@@ -73,11 +73,11 @@ internal class TimerNotification(
     }
 
     // Cancelling the notification from the app does not send its `deleteIntent`. The one of the held service is only
-    // removed when the service is released.
+    // removed when the service is released, which also ends its watch of the timer end (shake to keep listening).
     override fun hide() {
         manager.cancel(ID)
         manager.cancel(LEGACY_TAG, ID)
-        if (trigger.needsHeldService) SleepService.release(context)
+        SleepService.release(context)
     }
 
     private fun build(timer: Timer, timeout: Duration): Notification {
