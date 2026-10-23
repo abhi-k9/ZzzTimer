@@ -1,0 +1,1 @@
+- Fix vibration strength buttons wrapping and misaligning. The selector uses the full card width and scrolls horizontally when larger text needs more room.

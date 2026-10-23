@@ -3,10 +3,15 @@ package io.github.abhik9.zzztimer.ui
 import android.os.SystemClock
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
@@ -136,22 +141,6 @@ internal fun BeforeEndCard(
     val vibration = state.settings.warningVibration
     ListItem(
         headlineContent = { Text(stringResource(R.string.vibration_title)) },
-        supportingContent = {
-            SingleChoiceSegmentedButtonRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-            ) {
-                WarningVibration.entries.forEachIndexed { index, option ->
-                    SegmentedButton(
-                        selected = vibration == option,
-                        onClick = { actions.setWarningVibration(option) },
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = WarningVibration.entries.size),
-                        label = { Text(stringResource(option.label())) },
-                    )
-                }
-            }
-        },
         trailingContent = {
             TextButton(onClick = actions::testVibration, enabled = vibration != WarningVibration.OFF) {
                 Text(stringResource(R.string.action_test))
@@ -159,6 +148,24 @@ internal fun BeforeEndCard(
         },
         colors = settingsItemColors(),
     )
+    // Keep the action out of the selector's width. Scroll rather than split labels at large font sizes.
+    SingleChoiceSegmentedButtonRow(
+        Modifier
+            .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .width(IntrinsicSize.Max)
+            .height(IntrinsicSize.Min),
+    ) {
+        WarningVibration.entries.forEachIndexed { index, option ->
+            SegmentedButton(
+                selected = vibration == option,
+                onClick = { actions.setWarningVibration(option) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = WarningVibration.entries.size),
+                label = { Text(stringResource(option.label()), maxLines = 1, softWrap = false) },
+            )
+        }
+    }
     SettingsDivider()
     SliderItem(
         title = R.string.warning_title,
