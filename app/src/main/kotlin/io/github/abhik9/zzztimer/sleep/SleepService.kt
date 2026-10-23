@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import androidx.annotation.StringRes
 import androidx.core.content.IntentCompat
 import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.R
@@ -166,12 +167,7 @@ class SleepService : Service() {
         lastStartId = startId
         when (intent?.action) {
             ACTION_HOLD -> hold(intent, startId)
-            ACTION_RELEASE -> {
-                diagnostics.record { "service: release #$startId, running=${lifecycle.runningSleeps}" }
-                lifecycle.onRelease()
-                heldNotification = null
-                afterChange()
-            }
+            ACTION_RELEASE -> release(startId)
             ACTION_WATCH -> watch(intent, startId)
             else -> onDeadline(intent, startId)
         }
@@ -185,6 +181,13 @@ class SleepService : Service() {
         lifecycle.onHold(enterForeground(id, notification ?: sleepingNotification(), ForegroundMode.LONG))
         heldNotification = if (lifecycle.held && notification != null) id to notification else null
         diagnostics.record { "service: hold #$startId, held=${lifecycle.held}" }
+        afterChange()
+    }
+
+    private fun release(startId: Int) {
+        diagnostics.record { "service: release #$startId, running=${lifecycle.runningSleeps}" }
+        lifecycle.onRelease()
+        heldNotification = null
         afterChange()
     }
 
@@ -301,24 +304,21 @@ class SleepService : Service() {
         super.onDestroy()
     }
 
-    /** While watching the end of a timer without hold, e.g. before Android 17. */
-    private fun watchNotification(): Notification = Notification.Builder(this, TimerNotification.CHANNEL_ID)
-        .setCategory(Notification.CATEGORY_SERVICE)
-        .setSmallIcon(R.drawable.ic_tile)
-        .setContentTitle(getString(R.string.app_name))
-        .setContentText(getString(R.string.notification_ends_soon))
+    /** While watching the end of a timer without hold, e.g. before Android 17: it can still be extended from the app. */
+    private fun watchNotification(): Notification = serviceNotification(R.string.notification_ends_soon)
         .setContentIntent(MainActivity.pendingIntent(this))
-        .setOngoing(true)
         .build()
 
-    private fun sleepingNotification(): Notification = Notification.Builder(this, TimerNotification.CHANNEL_ID)
+    private fun sleepingNotification(): Notification = serviceNotification(R.string.notification_sleeping)
+        .setProgress(0, 0, true)
+        .build()
+
+    private fun serviceNotification(@StringRes text: Int): Notification.Builder = Notification.Builder(this, TimerNotification.CHANNEL_ID)
         .setCategory(Notification.CATEGORY_SERVICE)
         .setSmallIcon(R.drawable.ic_tile)
         .setContentTitle(getString(R.string.app_name))
-        .setContentText(getString(R.string.notification_sleeping))
-        .setProgress(0, 0, true)
+        .setContentText(getString(text))
         .setOngoing(true)
-        .build()
 
     /**
      * As a media playback foreground service for [ForegroundMode.LONG], a short service otherwise (only needed since
