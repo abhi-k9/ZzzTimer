@@ -25,8 +25,8 @@ enum class DeadlineOutcome {
 }
 
 /**
- * All the timer operations, shared by the notification actions, the Quick Settings tile, automation intents and the
- * app screen.
+ * All the timer operations, shared by the app screen, the notification actions, the Quick Settings tile, the home
+ * screen widget, shakes, bedtime and automation intents.
  *
  * Stateless and cheap to create: the state lives in the [display] and the [trigger]. Operations are expected to run
  * on a single thread (the Android main thread), which serializes them.
