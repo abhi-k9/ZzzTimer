@@ -40,8 +40,13 @@ internal sealed interface AndroidSleepTrigger : SleepTrigger {
 private class NotificationTimeoutTrigger(private val context: Context) : AndroidSleepTrigger {
     override val needsHeldService = false
     override fun isPermitted() = true
-    override fun arm(timer: Timer) = true
-    override fun disarm() = Unit
+
+    override fun arm(timer: Timer, warnAt: Long?): Boolean {
+        WarningAlarm.update(context, timer.deadline, warnAt)
+        return true
+    }
+
+    override fun disarm() = WarningAlarm.cancel(context)
     override fun deleteIntent(timer: Timer) = SleepService.pendingIntent(context, timer.deadline, foreground = false)
 }
 
@@ -60,7 +65,7 @@ private class ExactAlarmTrigger(private val context: Context) : AndroidSleepTrig
 
     override fun isPermitted() = alarms.canScheduleExactAlarms()
 
-    override fun arm(timer: Timer): Boolean {
+    override fun arm(timer: Timer, warnAt: Long?): Boolean {
         if (!alarms.canScheduleExactAlarms()) {
             context.diagnostics.record { "alarm: not allowed" }
             return false
@@ -69,6 +74,7 @@ private class ExactAlarmTrigger(private val context: Context) : AndroidSleepTrig
             val operation = SleepService.pendingIntent(context, timer.deadline, foreground = true)
             alarms.setExactAndAllowWhileIdle(ELAPSED_REALTIME_WAKEUP, timer.deadline, operation)
             context.diagnostics.record { "alarm: armed for ${timer.deadline}" }
+            WarningAlarm.update(context, timer.deadline, warnAt)
             true
         } catch (e: SecurityException) {
             // The permission has been revoked in the meantime.
@@ -81,6 +87,7 @@ private class ExactAlarmTrigger(private val context: Context) : AndroidSleepTrig
         val operation = SleepService.existingPendingIntent(context, foreground = true)
         context.diagnostics.record { "alarm: disarmed (armed=${operation != null})" }
         operation?.let(alarms::cancel)
+        WarningAlarm.cancel(context)
     }
 
     override fun deleteIntent(timer: Timer) = TimerActionReceiver.dismissIntent(context, timer.deadline)

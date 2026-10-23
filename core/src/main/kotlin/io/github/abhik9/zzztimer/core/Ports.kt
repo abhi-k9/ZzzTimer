@@ -30,12 +30,13 @@ interface SleepTrigger {
     fun isPermitted(): Boolean
 
     /**
-     * Schedules the sleep at the [Timer.deadline], replacing any previously armed timer.
-     * @return `false` when it could not be scheduled.
+     * Schedules the sleep at the [Timer.deadline], and the warning that it ends soon at [warnAt] (when not `null`), on
+     * the same timeline, replacing any previously armed timer.
+     * @return `false` when the sleep could not be scheduled.
      */
-    fun arm(timer: Timer): Boolean
+    fun arm(timer: Timer, warnAt: Long?): Boolean
 
-    /** Cancels the scheduled sleep, if any. */
+    /** Cancels the scheduled sleep and warning, if any. */
     fun disarm()
 }
 

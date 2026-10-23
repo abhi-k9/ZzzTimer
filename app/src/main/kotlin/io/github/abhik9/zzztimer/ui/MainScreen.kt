@@ -32,6 +32,7 @@ import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.Timer
+import io.github.abhik9.zzztimer.core.WarningVibration
 import io.github.abhik9.zzztimer.settings.ThemeMode
 import io.github.abhik9.zzztimer.system.explanation
 import io.github.abhik9.zzztimer.system.title
@@ -45,6 +46,9 @@ interface MainActions {
     fun reduce()
     fun setMinutes(setting: DurationSetting, minutes: Int)
     fun setFadeSeconds(seconds: Int)
+    fun setWarningVibration(vibration: WarningVibration)
+    fun setWarningMinutes(minutes: Int)
+    fun testVibration()
     fun testTimerEnd()
     fun setThemeMode(mode: ThemeMode)
     fun setDynamicColor(enabled: Boolean)
@@ -103,6 +107,8 @@ fun MainScreen(
                 StartTimerCard(state, actions, elapsedNow)
                 SectionHeader(R.string.section_durations)
                 DurationsCard(state, onEdit = { editing = it })
+                SectionHeader(R.string.section_before_end)
+                BeforeEndCard(state, actions, onAllowExactAlarms = { onResolve(Requirement.EXACT_ALARMS) })
                 SectionHeader(R.string.section_timer_end)
                 TimerEndCard(state, actions, onAllowMediaAccess)
                 SectionHeader(R.string.section_appearance)
@@ -136,6 +142,9 @@ private object PreviewActions : MainActions {
     override fun reduce() = Unit
     override fun setMinutes(setting: DurationSetting, minutes: Int) = Unit
     override fun setFadeSeconds(seconds: Int) = Unit
+    override fun setWarningVibration(vibration: WarningVibration) = Unit
+    override fun setWarningMinutes(minutes: Int) = Unit
+    override fun testVibration() = Unit
     override fun testTimerEnd() = Unit
     override fun setThemeMode(mode: ThemeMode) = Unit
     override fun setDynamicColor(enabled: Boolean) = Unit

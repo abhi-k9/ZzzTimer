@@ -5,10 +5,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Live Updates, since Android 16 QPR2. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
-    <!-- Since Android 17, the sleep is triggered by an exact alarm starting a foreground service, see AndroidSleepTrigger.kt -->
-    <uses-permission
-        android:name="android.permission.SCHEDULE_EXACT_ALARM"
-        android:minSdkVersion="37" />
+    <!-- Since Android 17, the sleep is triggered by an exact alarm starting a foreground service, see AndroidSleepTrigger.kt.
+         Before, it only makes the warning that the timer ends soon come on time, see WarningAlarm.kt -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- The warning that the timer ends soon. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE"
         android:minSdkVersion="37"

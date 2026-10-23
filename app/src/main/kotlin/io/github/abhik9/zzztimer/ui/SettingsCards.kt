@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.FadeSetting
+import io.github.abhik9.zzztimer.core.WarningSetting
+import io.github.abhik9.zzztimer.core.WarningVibration
 import io.github.abhik9.zzztimer.settings.ThemeMode
 import kotlin.math.roundToInt
 
@@ -131,7 +133,15 @@ internal fun TimerEndCard(
     onAllowMediaAccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) = SettingsCard(modifier) {
-    FadeItem(seconds = state.settings.fadeSeconds, onChange = actions::setFadeSeconds)
+    SliderItem(
+        title = R.string.fade_title,
+        description = R.string.fade_description,
+        value = state.settings.fadeSeconds,
+        range = FadeSetting.range,
+        step = FadeSetting.STEP_SECONDS,
+        label = { if (it == 0) stringResource(R.string.fade_off) else formatSeconds(it) },
+        onChange = actions::setFadeSeconds,
+    )
     SettingsDivider()
     // A system permission rather than a setting: both ways lead to its settings screen.
     SwitchItem(
@@ -149,6 +159,69 @@ internal fun TimerEndCard(
         colors = settingsItemColors(),
         modifier = Modifier.clickable(enabled = idle, onClick = actions::testTimerEnd),
     )
+}
+
+@StringRes
+private fun WarningVibration.label(): Int = when (this) {
+    WarningVibration.OFF -> R.string.vibration_off
+    WarningVibration.LIGHT -> R.string.vibration_light
+    WarningVibration.MEDIUM -> R.string.vibration_medium
+    WarningVibration.STRONG -> R.string.vibration_strong
+}
+
+@Composable
+internal fun BeforeEndCard(
+    state: MainUiState,
+    actions: MainActions,
+    onAllowExactAlarms: () -> Unit,
+    modifier: Modifier = Modifier,
+) = SettingsCard(modifier) {
+    val vibration = state.settings.warningVibration
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.vibration_title)) },
+        supportingContent = {
+            SingleChoiceSegmentedButtonRow(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+            ) {
+                WarningVibration.entries.forEachIndexed { index, option ->
+                    SegmentedButton(
+                        selected = vibration == option,
+                        onClick = { actions.setWarningVibration(option) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = WarningVibration.entries.size),
+                        label = { Text(stringResource(option.label())) },
+                    )
+                }
+            }
+        },
+        trailingContent = {
+            TextButton(onClick = actions::testVibration, enabled = vibration != WarningVibration.OFF) {
+                Text(stringResource(R.string.action_test))
+            }
+        },
+        colors = settingsItemColors(),
+    )
+    SettingsDivider()
+    SliderItem(
+        title = R.string.warning_title,
+        description = R.string.warning_description,
+        value = state.settings.warningMinutes,
+        range = WarningSetting.range,
+        step = 1,
+        label = { formatMinutes(it) },
+        onChange = actions::setWarningMinutes,
+    )
+    // Before Android 17, the warning works without the permission, but may come late.
+    if (state.warns && !state.warningOnTime) {
+        SettingsDivider()
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.warning_late_title)) },
+            supportingContent = { Text(stringResource(R.string.warning_late_description)) },
+            colors = settingsItemColors(),
+            modifier = Modifier.clickable(onClick = onAllowExactAlarms),
+        )
+    }
 }
 
 @Composable
@@ -193,29 +266,37 @@ internal fun DiagnosticsCard(
     }
 }
 
-/** Picks the fade out duration in steps of [FadeSetting.STEP_SECONDS], saved once released. */
+/** Picks a value of [range] in [step]s, saved once released. */
 @Composable
-private fun FadeItem(seconds: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
-    val range = FadeSetting.range
+private fun SliderItem(
+    @StringRes title: Int,
+    @StringRes description: Int,
+    value: Int,
+    range: IntRange,
+    step: Int,
+    label: @Composable (Int) -> String,
+    onChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     // Follows the slider while it is dragged.
-    var value by remember(seconds) { mutableIntStateOf(seconds) }
-    val label = if (value == 0) stringResource(R.string.fade_off) else formatSeconds(value)
+    var current by remember(value) { mutableIntStateOf(value) }
+    val currentLabel = label(current)
     ListItem(
-        headlineContent = { Text(stringResource(R.string.fade_title)) },
+        headlineContent = { Text(stringResource(title)) },
         supportingContent = {
             Column {
-                Text(stringResource(R.string.fade_description))
+                Text(stringResource(description))
                 Slider(
-                    value = value.toFloat(),
-                    onValueChange = { value = it.roundToInt() },
-                    onValueChangeFinished = { onChange(value) },
+                    value = current.toFloat(),
+                    onValueChange = { current = it.roundToInt() },
+                    onValueChangeFinished = { onChange(current) },
                     valueRange = range.first.toFloat()..range.last.toFloat(),
-                    steps = (range.last - range.first) / FadeSetting.STEP_SECONDS - 1,
-                    modifier = Modifier.semantics { stateDescription = label },
+                    steps = (range.last - range.first) / step - 1,
+                    modifier = Modifier.semantics { stateDescription = currentLabel },
                 )
             }
         },
-        trailingContent = { Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) },
+        trailingContent = { Text(currentLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) },
         colors = settingsItemColors(),
         modifier = modifier,
     )

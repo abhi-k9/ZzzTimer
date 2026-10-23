@@ -23,8 +23,15 @@ enum class DurationSetting(val defaultMinutes: Int, val range: IntRange) {
 
 /**
  * Snapshot of the durations used by [SleepTimer].
+ * @property warningLead how long before its end the user is warned that a timer ends soon (vibration, shake to extend),
+ * `null` when not warned.
  */
-data class TimerSettings(val initial: Duration, val increment: Duration, val decrement: Duration) {
+data class TimerSettings(
+    val initial: Duration,
+    val increment: Duration,
+    val decrement: Duration,
+    val warningLead: Duration? = null,
+) {
     companion object {
         fun ofMinutes(minutes: (DurationSetting) -> Int) = TimerSettings(
             initial = DurationSetting.INITIAL.sanitize(minutes(DurationSetting.INITIAL)).minutes,
@@ -47,4 +54,31 @@ object FadeSetting {
 
     /** Brings a stored or user provided value back into [range]. */
     fun sanitize(seconds: Int): Int = seconds.coerceIn(range)
+}
+
+/** How long before its end the user is warned that a timer ends soon, in whole minutes, see [TimerSettings.warningLead]. */
+object WarningSetting {
+    const val DEFAULT_MINUTES = 1
+    val range = 1..10
+
+    /** Brings a stored or user provided value back into [range]. */
+    fun sanitize(minutes: Int): Int = minutes.coerceIn(range)
+}
+
+/** The vibration warning that a timer ends soon: small, and stronger only on request. */
+enum class WarningVibration(
+    /** Vibration amplitude, from 1 to 255, on devices that can control it. */
+    val amplitude: Int,
+    /** Length of the vibration: devices without amplitude control only vibrate longer. */
+    val millis: Long,
+) {
+    OFF(amplitude = 0, millis = 0),
+    LIGHT(amplitude = 60, millis = 120),
+    MEDIUM(amplitude = 140, millis = 220),
+    STRONG(amplitude = 255, millis = 400),
+    ;
+
+    companion object {
+        val DEFAULT = LIGHT
+    }
 }

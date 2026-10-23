@@ -7,10 +7,13 @@ import androidx.core.content.edit
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.FadeSetting
 import io.github.abhik9.zzztimer.core.TimerSettings
+import io.github.abhik9.zzztimer.core.WarningSetting
+import io.github.abhik9.zzztimer.core.WarningVibration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
+import kotlin.time.Duration.Companion.minutes
 
 /** Night mode of the app, independent of the system one. */
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
@@ -19,6 +22,8 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 data class UserSettings(
     val durations: Map<DurationSetting, Int> = DurationSetting.entries.associateWith { it.defaultMinutes },
     val fadeSeconds: Int = FadeSetting.DEFAULT_SECONDS,
+    val warningVibration: WarningVibration = WarningVibration.DEFAULT,
+    val warningMinutes: Int = WarningSetting.DEFAULT_MINUTES,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val automationEnabled: Boolean = true,
@@ -37,6 +42,8 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         private const val TAG = "SettingsStore"
         private const val FILE = "settings"
         private const val KEY_FADE = "fade_seconds"
+        private const val KEY_WARNING_VIBRATION = "warning_vibration"
+        private const val KEY_WARNING_MINUTES = "warning_minutes"
         private const val KEY_THEME = "theme"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AUTOMATION = "automation"
@@ -57,7 +64,19 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
 
     fun setMinutes(setting: DurationSetting, minutes: Int) = prefs.edit { putInt(setting.key, setting.sanitize(minutes)) }
 
-    fun timerSettings(): TimerSettings = TimerSettings.ofMinutes(::minutes)
+    fun timerSettings(): TimerSettings =
+        TimerSettings.ofMinutes(::minutes).copy(warningLead = if (warns) warningMinutes.minutes else null)
+
+    /** Whether the user is warned that a timer ends soon, see [TimerSettings.warningLead]. */
+    private val warns: Boolean get() = warningVibration != WarningVibration.OFF
+
+    var warningVibration: WarningVibration
+        get() = readEnum(KEY_WARNING_VIBRATION, WarningVibration.DEFAULT)
+        set(value) = prefs.edit { putString(KEY_WARNING_VIBRATION, value.name) }
+
+    var warningMinutes: Int
+        get() = WarningSetting.sanitize(read(KEY_WARNING_MINUTES, WarningSetting.DEFAULT_MINUTES, prefs::getInt))
+        set(value) = prefs.edit { putInt(KEY_WARNING_MINUTES, WarningSetting.sanitize(value)) }
 
     /** How long the volume fades out when a timer ends, see [FadeSetting]. */
     var fadeSeconds: Int
@@ -65,8 +84,7 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         set(value) = prefs.edit { putInt(KEY_FADE, FadeSetting.sanitize(value)) }
 
     var themeMode: ThemeMode
-        get() = read(KEY_THEME, null, prefs::getString)?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
-            ?: ThemeMode.SYSTEM
+        get() = readEnum(KEY_THEME, ThemeMode.SYSTEM)
         set(value) = prefs.edit { putString(KEY_THEME, value.name) }
 
     var dynamicColor: Boolean
@@ -91,6 +109,8 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
     fun snapshot() = UserSettings(
         durations = DurationSetting.entries.associateWith(::minutes),
         fadeSeconds = fadeSeconds,
+        warningVibration = warningVibration,
+        warningMinutes = warningMinutes,
         themeMode = themeMode,
         dynamicColor = dynamicColor,
         automationEnabled = automationEnabled,
@@ -105,6 +125,10 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         send(snapshot())
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }.conflate()
+
+    /** An enum stored by name: an unknown one falls back to the default. */
+    private inline fun <reified E : Enum<E>> readEnum(key: String, default: E): E =
+        read(key, null, prefs::getString)?.let { name -> enumValues<E>().firstOrNull { it.name == name } } ?: default
 
     /** A value stored with another type throws [ClassCastException]: fall back to the default. */
     private inline fun <T> read(key: String, default: T, getter: (String, T) -> T): T = try {

@@ -14,6 +14,7 @@ import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.StartResult
 import io.github.abhik9.zzztimer.core.Timer
 import io.github.abhik9.zzztimer.core.TimerEndTest
+import io.github.abhik9.zzztimer.core.WarningVibration
 import io.github.abhik9.zzztimer.diagnostics.DiagnosticsReport
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
@@ -23,6 +24,8 @@ import io.github.abhik9.zzztimer.sleep.MediaAccessService
 import io.github.abhik9.zzztimer.sleepTimer
 import io.github.abhik9.zzztimer.system.isBackgroundRestricted
 import io.github.abhik9.zzztimer.system.toast
+import io.github.abhik9.zzztimer.system.vibrate
+import io.github.abhik9.zzztimer.timer.WarningAlarm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -57,7 +60,12 @@ data class MainUiState(
     val mediaAccess: Boolean = false,
     /** Whether the app is restricted in the background, which may keep the timer from pausing playback. */
     val backgroundRestricted: Boolean = false,
-)
+    /** Whether the warning that a timer ends soon comes on time, see [WarningAlarm.isExact]. */
+    val warningOnTime: Boolean = true,
+) {
+    /** Whether the user is warned that a timer ends soon. */
+    val warns: Boolean get() = settings.warningVibration != WarningVibration.OFF
+}
 
 class MainViewModel(application: Application) : AndroidViewModel(application), MainActions {
 
@@ -98,6 +106,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), M
         diagnosticsLogBytes = diagnostics.size(),
         mediaAccess = MediaAccessService.isGranted(getApplication<Application>()),
         backgroundRestricted = getApplication<Application>().isBackgroundRestricted(),
+        warningOnTime = WarningAlarm.isExact(getApplication()),
     )
 
     /** Re-reads the timer and the permissions right away, e.g. when coming back from the system settings. */
@@ -133,6 +142,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application), M
             if (result is StartResult.Started) settings.testDeadline = result.timer.deadline
         }
     }
+
+    // Re-arms the warning of a running timer.
+    override fun setWarningVibration(vibration: WarningVibration) = perform {
+        settings.warningVibration = vibration
+        timer.refresh()
+    }
+
+    override fun setWarningMinutes(minutes: Int) = perform {
+        settings.warningMinutes = minutes
+        timer.refresh()
+    }
+
+    override fun testVibration() = getApplication<Application>().vibrate(settings.warningVibration)
 
     override fun setFadeSeconds(seconds: Int) {
         settings.fadeSeconds = seconds

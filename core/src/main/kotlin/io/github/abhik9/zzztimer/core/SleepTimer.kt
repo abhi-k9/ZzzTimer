@@ -79,8 +79,10 @@ class SleepTimer(
         }
         missingRequirement()?.let { return StartResult.Blocked(it) }
         val timer = Timer(deadline = clock.elapsedMillis() + millis, endsAt = clock.wallMillis() + millis)
+        // No warning for a timer shorter than its lead: it would come right away.
+        val warnAt = settings().warningLead?.inWholeMilliseconds?.takeIf { it < millis }?.let { timer.deadline - it }
         // Never display a timer that would not pause playback when it ends.
-        if (!trigger.arm(timer)) return StartResult.Blocked(Requirement.EXACT_ALARMS)
+        if (!trigger.arm(timer, warnAt)) return StartResult.Blocked(Requirement.EXACT_ALARMS)
         display.show(timer, millis.milliseconds)
         onChange(timer)
         return StartResult.Started(timer)
@@ -157,6 +159,16 @@ class SleepTimer(
             onChange(null)
         }
         return DeadlineOutcome.DISMISSED
+    }
+
+    /**
+     * Handles the warning that the timer of [deadline] ends soon.
+     * @return whether to warn the user: not when that timer has been stopped or changed since.
+     */
+    fun onWarning(deadline: Long): Boolean {
+        val current = current()
+        log.record { "warning($deadline): current=$current" }
+        return current != null && current.deadline == deadline
     }
 
     fun execute(command: TimerCommand): StartResult? = when (command) {

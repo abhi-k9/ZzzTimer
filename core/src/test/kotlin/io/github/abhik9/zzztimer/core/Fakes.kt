@@ -36,17 +36,22 @@ class FakeDisplay(var available: Boolean = true) : TimerDisplay {
 
 class FakeTrigger(var permitted: Boolean = true, var armable: Boolean = true) : SleepTrigger {
     var armed: Timer? = null
+    var warnAt: Long? = null
     var disarms = 0
 
     override fun isPermitted() = permitted
 
-    override fun arm(timer: Timer): Boolean {
-        if (armable) armed = timer
+    override fun arm(timer: Timer, warnAt: Long?): Boolean {
+        if (armable) {
+            armed = timer
+            this.warnAt = warnAt
+        }
         return armable
     }
 
     override fun disarm() {
         armed = null
+        warnAt = null
         disarms++
     }
 }

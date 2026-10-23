@@ -290,6 +290,46 @@ class SleepTimerTest {
     }
 
     @Nested
+    inner class Warning {
+        @Test
+        fun `the warning comes its lead before the deadline`() {
+            settings = settings.copy(warningLead = 2.minutes)
+            val started = timer.start(20.minutes).started()
+            assertEquals(started.deadline - 2.minutes.inWholeMilliseconds, trigger.warnAt)
+        }
+
+        @Test
+        fun `no warning without lead, nor for a timer not longer than its lead`() {
+            timer.start(20.minutes)
+            assertNull(trigger.warnAt)
+            settings = settings.copy(warningLead = 2.minutes)
+            timer.start(2.minutes)
+            assertNull(trigger.warnAt)
+        }
+
+        @Test
+        fun `extending moves the warning`() {
+            settings = settings.copy(warningLead = 1.minutes)
+            timer.start(5.minutes)
+            clock.advance(4.minutes)
+            val extended = timer.extend().started()
+            assertEquals(extended.deadline - 1.minutes.inWholeMilliseconds, trigger.warnAt)
+        }
+
+        @Test
+        fun `only the running timer is warned`() {
+            settings = settings.copy(warningLead = 1.minutes)
+            val old = timer.start(5.minutes).started()
+            val new = timer.start(10.minutes).started()
+            assertEquals(false, timer.onWarning(old.deadline))
+            assertEquals(true, timer.onWarning(new.deadline))
+            timer.stop()
+            assertEquals(false, timer.onWarning(new.deadline))
+            assertNull(trigger.warnAt)
+        }
+    }
+
+    @Nested
     inner class Commands {
         @Test
         fun `start with and without duration`() {
