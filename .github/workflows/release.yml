@@ -55,7 +55,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="v$(./gradlew --quiet :app:printVersionName | tail -n 1)"
+          read -r name code < <(./gradlew --quiet :app:printVersion | tail -n 1)
+          tag="v$name"
+          notes="fastlane/metadata/android/en-US/changelogs/$code.txt"
+          if [ ! -s "$notes" ]; then
+            echo "::error::Missing release notes: write $notes"
+            exit 1
+          fi
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
             if [ "$tag" != "$GITHUB_REF_NAME" ]; then
               echo "::error::Tag $GITHUB_REF_NAME does not match the app version $tag (app/build.gradle.kts)"
@@ -77,6 +83,7 @@ jobs:
             fi
           fi
           echo "TAG=$tag" >> "$GITHUB_ENV"
+          echo "NOTES=$notes" >> "$GITHUB_ENV"
 
       - name: Decode the signing keystore
         env:
@@ -129,8 +136,10 @@ jobs:
         run: |
           # A pushed tag must already exist; a manual run creates it on the built commit.
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then target=(--verify-tag); else target=(--target "$GITHUB_SHA"); fi
+          # The changelog of the version, followed by the generated notes (link to the full changelog).
           gh release create "$TAG" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "ZzzTimer $TAG" \
+            --notes-file "$NOTES" \
             --generate-notes \
             "${target[@]}"

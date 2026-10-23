@@ -21,10 +21,11 @@ base64 -w 0 zzztimer-release.jks   # macOS: base64 -i zzztimer-release.jks
 
 ## Publishing a release
 
-Bump the version in `app/build.gradle.kts` on `main`, then run the [release workflow](.github/workflows/release.yml) on
-`main` (Actions → Release → Run workflow). It creates the `vX.Y.Z` tag, builds from scratch, tests, lints, signs, checks
-the signing certificate, attests the build provenance, and publishes the APK with its checksum. Pushing a tag that points
-to `main` works too.
+Bump the version in `app/build.gradle.kts` on `main`, and write its changelog in
+`fastlane/metadata/android/en-US/changelogs/<version code>.txt`: the release notes, also for app stores. Then run the
+[release workflow](.github/workflows/release.yml) on `main` (Actions → Release → Run workflow). It creates the `vX.Y.Z`
+tag, builds from scratch, tests, lints, signs, checks the signing certificate, attests the build provenance, and publishes
+the APK with its checksum, and the changelog as release notes. Pushing a tag that points to `main` works too.
 
 The workflow runs in the `release` environment, which can hold the secrets and protection rules (Settings →
 Environments).

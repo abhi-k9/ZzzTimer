@@ -114,10 +114,12 @@ kotlin {
     }
 }
 
-// Used by the release workflow to check that the pushed tag matches the app version.
-tasks.register("printVersionName") {
+// Used by the release workflow: the tag must match the version name, and the release notes are the changelog of the
+// version code (fastlane/metadata/android/en-US/changelogs).
+tasks.register("printVersion") {
     val versionName = appVersionName
-    doLast { println(versionName) }
+    val versionCode = versionCodeOf(versionMajor, versionMinor, versionPatch, versionBuild)
+    doLast { println("$versionName $versionCode") }
 }
 
 dependencies {
