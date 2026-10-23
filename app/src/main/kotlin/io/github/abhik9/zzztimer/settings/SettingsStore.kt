@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.core.content.edit
+import io.github.abhik9.zzztimer.core.BedtimeSetting
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.FadeSetting
 import io.github.abhik9.zzztimer.core.ShakeSetting
@@ -27,6 +28,8 @@ data class UserSettings(
     val warningMinutes: Int = WarningSetting.DEFAULT_MINUTES,
     val shakeEnabled: Boolean = false,
     val shakeLevel: Int = ShakeSetting.DEFAULT_LEVEL,
+    val bedtimeEnabled: Boolean = false,
+    val bedtimeMinute: Int = BedtimeSetting.DEFAULT_MINUTE,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val automationEnabled: Boolean = true,
@@ -49,6 +52,8 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         private const val KEY_WARNING_MINUTES = "warning_minutes"
         private const val KEY_SHAKE = "shake"
         private const val KEY_SHAKE_LEVEL = "shake_level"
+        private const val KEY_BEDTIME = "bedtime"
+        private const val KEY_BEDTIME_MINUTE = "bedtime_minute"
         private const val KEY_THEME = "theme"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AUTOMATION = "automation"
@@ -92,6 +97,16 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         get() = ShakeSetting.sanitize(read(KEY_SHAKE_LEVEL, ShakeSetting.DEFAULT_LEVEL, prefs::getInt))
         set(value) = prefs.edit { putInt(KEY_SHAKE_LEVEL, ShakeSetting.sanitize(value)) }
 
+    /** Whether a timer starts at bedtime, see [io.github.abhik9.zzztimer.core.Bedtime]. */
+    var bedtimeEnabled: Boolean
+        get() = read(KEY_BEDTIME, false, prefs::getBoolean)
+        set(value) = prefs.edit { putBoolean(KEY_BEDTIME, value) }
+
+    /** Bedtime, in minutes of the day. */
+    var bedtimeMinute: Int
+        get() = BedtimeSetting.sanitize(read(KEY_BEDTIME_MINUTE, BedtimeSetting.DEFAULT_MINUTE, prefs::getInt))
+        set(value) = prefs.edit { putInt(KEY_BEDTIME_MINUTE, BedtimeSetting.sanitize(value)) }
+
     /** How long the volume fades out when a timer ends, see [FadeSetting]. */
     var fadeSeconds: Int
         get() = FadeSetting.sanitize(read(KEY_FADE, FadeSetting.DEFAULT_SECONDS, prefs::getInt))
@@ -127,6 +142,8 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         warningMinutes = warningMinutes,
         shakeEnabled = shakeEnabled,
         shakeLevel = shakeLevel,
+        bedtimeEnabled = bedtimeEnabled,
+        bedtimeMinute = bedtimeMinute,
         themeMode = themeMode,
         dynamicColor = dynamicColor,
         automationEnabled = automationEnabled,

@@ -88,6 +88,12 @@
     <string name="test_not_paused">The player didn’t pause.</string>
     <string name="test_rewound">Rewound to %1$s.</string>
 
+    <string name="section_bedtime">Bedtime</string>
+    <string name="bedtime_title">Start a timer at bedtime</string>
+    <string name="bedtime_description">From bedtime and for 3 hours, playing something without a timer starts one of the default duration.</string>
+    <string name="bedtime_time_title">Bedtime</string>
+    <string name="bedtime_android_17">Android 17 only lets ZzzTimer fade out timers you start yourself: bedtime timers pause without fading, unless you extend or reduce them from their notification.</string>
+
     <string name="section_appearance">Appearance</string>
     <string name="theme_title">Theme</string>
     <string name="theme_system">System</string>

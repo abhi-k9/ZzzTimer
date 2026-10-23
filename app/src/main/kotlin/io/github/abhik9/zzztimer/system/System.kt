@@ -1,6 +1,7 @@
 package io.github.abhik9.zzztimer.system
 
 import android.app.ActivityManager
+import android.app.AlarmManager
 import android.app.usage.UsageStatsManager
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -44,6 +45,9 @@ fun Context.mediaAccessSettingsIntents(): Array<Intent> {
         arrayOf(listeners)
     }
 }
+
+/** Whether exact alarms may be scheduled: since Android 12, only with the Alarms & reminders permission. */
+fun Context.exactAlarmsAllowed(): Boolean = SDK_INT < S || getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
 /** App info, also a last resort: OEM builds may lack, or restrict, specific settings screens. */
 fun Context.appDetailsIntent(): Intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())

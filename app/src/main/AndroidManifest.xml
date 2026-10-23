@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- The warning that the timer ends soon. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Bedtime: schedules its alarm again after a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- The sleep service runs in the foreground while it watches the end of a timer (shake to keep listening), and
          since Android 17 while a timer runs, see SleepService.kt -->
     <uses-permission
@@ -87,6 +89,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/sleep_widget_info" />
+        </receiver>
+
+        <!-- Bedtime: its alarm, and the system broadcasts after which it is scheduled again. -->
+        <receiver
+            android:name=".bedtime.BedtimeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
         </receiver>
 
         <!-- Widget taps: only reachable through the widget's own PendingIntent. -->

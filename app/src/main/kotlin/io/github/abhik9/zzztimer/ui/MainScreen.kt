@@ -51,6 +51,8 @@ interface MainActions {
     fun testVibration()
     fun setShakeEnabled(enabled: Boolean)
     fun setShakeLevel(level: Int)
+    fun setBedtimeEnabled(enabled: Boolean)
+    fun setBedtimeMinute(minute: Int)
     fun testTimerEnd()
     fun setThemeMode(mode: ThemeMode)
     fun setDynamicColor(enabled: Boolean)
@@ -113,6 +115,8 @@ fun MainScreen(
                 BeforeEndCard(state, actions, onAllowExactAlarms = { onResolve(Requirement.EXACT_ALARMS) })
                 SectionHeader(R.string.section_timer_end)
                 TimerEndCard(state, actions, onAllowMediaAccess)
+                SectionHeader(R.string.section_bedtime)
+                BedtimeCard(state, actions)
                 SectionHeader(R.string.section_appearance)
                 AppearanceCard(state, actions)
                 SectionHeader(R.string.section_automation)
@@ -149,6 +153,8 @@ private object PreviewActions : MainActions {
     override fun testVibration() = Unit
     override fun setShakeEnabled(enabled: Boolean) = Unit
     override fun setShakeLevel(level: Int) = Unit
+    override fun setBedtimeEnabled(enabled: Boolean) = Unit
+    override fun setBedtimeMinute(minute: Int) = Unit
     override fun testTimerEnd() = Unit
     override fun setThemeMode(mode: ThemeMode) = Unit
     override fun setDynamicColor(enabled: Boolean) = Unit

@@ -3,6 +3,7 @@ package io.github.abhik9.zzztimer
 import android.app.Application
 import android.content.Context
 import android.os.SystemClock
+import io.github.abhik9.zzztimer.bedtime.BedtimeReceiver
 import io.github.abhik9.zzztimer.control.requestControlsUpdate
 import io.github.abhik9.zzztimer.core.DeviceClock
 import io.github.abhik9.zzztimer.core.SleepTimer
@@ -43,6 +44,8 @@ class ZzzTimerApp : Application() {
         super.onCreate()
         recordCrashes()
         TimerNotification.createChannel(this)
+        // Its alarm is lost when the app is force stopped.
+        BedtimeReceiver.schedule(this)
     }
 
     /** Crashes are recorded in the diagnostics log (when enabled), then handled as usual. */

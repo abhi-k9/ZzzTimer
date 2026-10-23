@@ -9,6 +9,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.abhik9.zzztimer.R
+import io.github.abhik9.zzztimer.bedtime.BedtimeReceiver
 import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.StartResult
@@ -22,10 +23,10 @@ import io.github.abhik9.zzztimer.settings.ThemeMode
 import io.github.abhik9.zzztimer.settings.UserSettings
 import io.github.abhik9.zzztimer.sleep.MediaAccessService
 import io.github.abhik9.zzztimer.sleepTimer
+import io.github.abhik9.zzztimer.system.exactAlarmsAllowed
 import io.github.abhik9.zzztimer.system.isBackgroundRestricted
 import io.github.abhik9.zzztimer.system.toast
 import io.github.abhik9.zzztimer.system.vibrate
-import io.github.abhik9.zzztimer.timer.WarningAlarm
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -60,7 +61,7 @@ data class MainUiState(
     val mediaAccess: Boolean = false,
     /** Whether the app is restricted in the background, which may keep the timer from pausing playback. */
     val backgroundRestricted: Boolean = false,
-    /** Whether the warning that a timer ends soon comes on time, see [WarningAlarm.isExact]. */
+    /** Whether the warning that a timer ends soon comes on time: it needs exact alarms. */
     val warningOnTime: Boolean = true,
 ) {
     /** Whether the user is warned that a timer ends soon. */
@@ -106,7 +107,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), M
         diagnosticsLogBytes = diagnostics.size(),
         mediaAccess = MediaAccessService.isGranted(getApplication<Application>()),
         backgroundRestricted = getApplication<Application>().isBackgroundRestricted(),
-        warningOnTime = WarningAlarm.isExact(getApplication()),
+        warningOnTime = getApplication<Application>().exactAlarmsAllowed(),
     )
 
     /** Re-reads the timer and the permissions right away, e.g. when coming back from the system settings. */
@@ -163,6 +164,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application), M
 
     override fun setShakeLevel(level: Int) {
         settings.shakeLevel = level
+    }
+
+    override fun setBedtimeEnabled(enabled: Boolean) {
+        settings.bedtimeEnabled = enabled
+        BedtimeReceiver.schedule(getApplication())
+    }
+
+    override fun setBedtimeMinute(minute: Int) {
+        settings.bedtimeMinute = minute
+        BedtimeReceiver.schedule(getApplication())
     }
 
     override fun setFadeSeconds(seconds: Int) {
