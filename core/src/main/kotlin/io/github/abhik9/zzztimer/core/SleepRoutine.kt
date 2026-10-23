@@ -1,5 +1,6 @@
 package io.github.abhik9.zzztimer.core
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -51,6 +52,27 @@ interface PlayingMedia {
 }
 
 /**
+ * Cancels a [SleepRoutine] because the user is still awake (e.g. they shook the phone): playback goes on, at its
+ * volume before the fade.
+ */
+class StillAwake : CancellationException("Still awake")
+
+/** What a [SleepRoutine] did, e.g. to report a test. */
+data class SleepReport(
+    /** Whether something was playing on this device when the timer ended. */
+    val wasPlaying: Boolean,
+    val volumeBefore: Int,
+    /** The lowest volume the fade reached, `null` without a fade. */
+    val fadedTo: Int?,
+    /** Whether volume changes were ignored, e.g. by the Android 17 background audio restrictions. */
+    val volumeRefused: Boolean,
+    /** Whether nothing played anymore once paused. */
+    val paused: Boolean,
+    /** Where playback was rewound, `null` when it wasn't. */
+    val rewoundTo: Duration?,
+)
+
+/**
  * What happens when a timer ends: the volume is gradually lowered over the [fade], playback is paused, then the volume
  * is restored. When the [media] session is available, it is paused directly, and playback is also rewound to where the
  * fade started, see [rewindTarget].
@@ -75,43 +97,66 @@ class SleepRoutine(
     }
 
     /**
-     * Playback is paused and the volume restored even when cancelled (e.g. when the system stops the service). The volume
-     * is restored even when a step fails.
+     * Playback is paused and the volume restored even when cancelled (e.g. when the system stops the service), except
+     * when cancelled with [StillAwake]. The volume is restored even when a step fails.
      */
-    suspend fun run() {
+    suspend fun run(): SleepReport {
         // Read at the time of the fade: the user may have changed the volume while the timer was running.
         val volume = audio.volume
         val minVolume = audio.minVolume
-        log.record { "sleep: volume=$volume min=$minVolume playing=${audio.isPlaying} fixed=${audio.isVolumeFixed} fade=$fade" }
+        val wasPlaying = audio.isPlaying
+        log.record { "sleep: volume=$volume min=$minVolume playing=$wasPlaying fixed=${audio.isVolumeFixed} fade=$fade" }
         // The session heard, when playing locally (not when casting).
-        val session = if (audio.isPlaying) media() else null
+        val session = if (wasPlaying) media() else null
         // Where the session was when the fade started. Without a fade, nothing is rewound.
         var fadeStart: PlaybackPoint? = null
+        val progress = FadeProgress(lowest = volume)
+        var faded = false
+        var stillAwake = false
+        var paused = false
+        var rewoundTo: Duration? = null
         try {
             // Turned off, or pointless when nothing is playing locally or the volume can't go any lower.
-            if (fade.isPositive() && audio.isPlaying && !audio.isVolumeFixed && volume > minVolume) {
+            if (fade.isPositive() && wasPlaying && !audio.isVolumeFixed && volume > minVolume) {
                 if (session != null) {
                     fadeStart = session.current()
                     log.record { "rewind: fade starts at $fadeStart" }
                 }
-                fadeOut(minVolume)
+                faded = true
+                fadeOut(minVolume, progress)
             }
+        } catch (e: StillAwake) {
+            stillAwake = true
+            throw e
         } finally {
             withContext(NonCancellable) {
                 try {
-                    // Both: the pause button also reaches players without session access, and is harmless otherwise.
-                    session?.pause()
-                    audio.pause()
-                    log.record { "sleep: pause requested (session: ${session != null}), playing=${audio.isPlaying}" }
-                    // Lets the player pause before reading where it stopped, and before the volume goes back up.
-                    if (fadeStart != null || audio.volume != volume) delay(restoreDelay)
-                    fadeStart?.let { start -> session?.let { rewind(it, start) } }
+                    if (stillAwake) {
+                        log.record { "sleep: still awake, playback goes on" }
+                    } else {
+                        // Both: the pause button also reaches players without session access, and is harmless otherwise.
+                        session?.pause()
+                        audio.pause()
+                        log.record { "sleep: pause requested (session: ${session != null}), playing=${audio.isPlaying}" }
+                        // Lets the player pause before reading where it stopped, and before the volume goes back up.
+                        if (fadeStart != null || audio.volume != volume) delay(restoreDelay)
+                        paused = !audio.isPlaying
+                        rewoundTo = fadeStart?.let { start -> session?.let { rewind(it, start) } }
+                    }
                 } finally {
                     // Whatever failed before: the volume must never stay low.
-                    restore(volume)
+                    restore(volume, evenIfPlaying = stillAwake)
                 }
             }
         }
+        return SleepReport(
+            wasPlaying = wasPlaying,
+            volumeBefore = volume,
+            fadedTo = if (faded) progress.lowest else null,
+            volumeRefused = progress.refused,
+            paused = paused,
+            rewoundTo = rewoundTo,
+        )
     }
 
     /**
@@ -128,16 +173,18 @@ class SleepRoutine(
         return (end.position - rewind).coerceAtLeast(Duration.ZERO)
     }
 
-    private fun rewind(session: PlayingMedia, start: PlaybackPoint) {
+    /** @return where playback was rewound, `null` when it wasn't. */
+    private fun rewind(session: PlayingMedia, start: PlaybackPoint): Duration? {
         // The player ignored the pause: rewinding would only replay what is being heard.
         if (audio.isPlaying) {
             log.record { "rewind: skipped, still playing" }
-            return
+            return null
         }
         val end = session.current()
         val target = end?.let { rewindTarget(start, it) }
         log.record { "rewind: from $end to $target" }
         if (target != null) session.seekTo(target)
+        return target
     }
 
     /**
@@ -151,7 +198,9 @@ class SleepRoutine(
         return weights.map { fade * (it / total) }
     }
 
-    private suspend fun fadeOut(min: Int) {
+    private class FadeProgress(var lowest: Int, var refused: Boolean = false)
+
+    private suspend fun fadeOut(min: Int, progress: FadeProgress) {
         val steps = audio.volume - min
         log.record { "fade: $steps steps over $fade" }
         // Bounded: the volume may never reach `min` (user interaction, OEM policies…).
@@ -160,21 +209,24 @@ class SleepRoutine(
             audio.lowerVolume()
             delay(stepDelay)
             val now = audio.volume
+            progress.lowest = minOf(progress.lowest, now)
             if (now <= min) return
             // Refused (e.g. Android 17 background audio restrictions, which fail silently), or raised by the user: the
             // rest of the fade would only delay the pause.
             if (now >= before) {
                 log.record { "fade: volume not lowered ($before to $now), pausing now" }
+                progress.refused = true
                 return
             }
         }
         log.record { "fade: stopped at volume ${audio.volume}, above the minimum $min" }
     }
 
-    private fun restore(volume: Int) {
+    /** @param evenIfPlaying whether playback goes on on purpose, see [StillAwake]. */
+    private fun restore(volume: Int, evenIfPlaying: Boolean) {
         if (audio.volume == volume) return
         // The player ignored the pause request: keep it quiet rather than blasting audio at full volume.
-        if (audio.isPlaying) {
+        if (audio.isPlaying && !evenIfPlaying) {
             log.record { "restore: skipped, still playing at volume ${audio.volume}" }
             return
         }

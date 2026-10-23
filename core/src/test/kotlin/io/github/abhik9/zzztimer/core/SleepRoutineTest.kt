@@ -237,6 +237,58 @@ class SleepRoutineTest {
     }
 
     @Test
+    fun `a user still awake keeps playing, at the volume before the fade`() = runTest {
+        val audio = FakeAudio(volume = 10)
+        val media = FakeMedia(audio, clock = { currentTime })
+        val job = launch { SleepRoutine(audio, media = { media }, fade = 10.seconds).run() }
+        advanceTimeBy(2.5.seconds)
+        job.cancel(StillAwake())
+        runCurrent()
+        advanceTimeBy(3.seconds)
+
+        assertEquals(listOf("lower", "lower", "lower", "lower", "set:10"), audio.events)
+        assertTrue(audio.isPlaying)
+        assertTrue(media.seeks.isEmpty())
+        assertTrue(job.isCancelled)
+    }
+
+    @Test
+    fun `reports what it did`() = runTest {
+        val audio = FakeAudio(volume = 3)
+        val media = FakeMedia(audio, clock = { currentTime })
+        val report = SleepRoutine(audio, media = { media }).run()
+        assertEquals(
+            SleepReport(
+                wasPlaying = true,
+                volumeBefore = 3,
+                fadedTo = 0,
+                volumeRefused = false,
+                paused = true,
+                rewoundTo = 98_500.milliseconds,
+            ),
+            report,
+        )
+    }
+
+    @Test
+    fun `reports ignored volume changes, and an ignored pause`() = runTest {
+        val report = SleepRoutine(FakeAudio(volume = 3, adjustable = false, pausable = false)).run()
+        assertEquals(
+            SleepReport(wasPlaying = true, volumeBefore = 3, fadedTo = 3, volumeRefused = true, paused = false, rewoundTo = null),
+            report,
+        )
+    }
+
+    @Test
+    fun `reports when nothing played`() = runTest {
+        val report = SleepRoutine(FakeAudio(volume = 3, isPlaying = false)).run()
+        assertEquals(
+            SleepReport(wasPlaying = false, volumeBefore = 3, fadedTo = null, volumeRefused = false, paused = true, rewoundTo = null),
+            report,
+        )
+    }
+
+    @Test
     fun `cancellation still pauses and restores`() = runTest {
         val audio = FakeAudio(volume = 10)
         val job = launch { SleepRoutine(audio, fade = 10.seconds).run() }
