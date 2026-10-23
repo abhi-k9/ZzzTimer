@@ -27,6 +27,7 @@ import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.settings.ThemeMode
+import io.github.abhik9.zzztimer.system.appDetailsIntent
 import io.github.abhik9.zzztimer.system.mediaAccessSettingsIntents
 import io.github.abhik9.zzztimer.system.settingsIntent
 import io.github.abhik9.zzztimer.system.startSettings
@@ -77,6 +78,8 @@ class MainActivity : ComponentActivity() {
                     actions = viewModel,
                     onResolve = ::resolve,
                     onAllowMediaAccess = { startSettings(*mediaAccessSettingsIntents()) },
+                    // Battery usage is in the app info, on every Android version and OEM build.
+                    onAllowBackground = { startSettings(appDetailsIntent()) },
                     onExportDiagnostics = ::exportDiagnostics,
                 )
             }

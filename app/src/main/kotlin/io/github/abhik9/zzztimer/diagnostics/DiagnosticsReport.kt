@@ -19,6 +19,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import io.github.abhik9.zzztimer.settings.SettingsStore
 import io.github.abhik9.zzztimer.sleep.MediaAccessService
 import io.github.abhik9.zzztimer.sleepTimer
+import io.github.abhik9.zzztimer.system.isBackgroundRestricted
 import io.github.abhik9.zzztimer.timer.TimerNotification
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
@@ -47,6 +48,7 @@ internal object DiagnosticsReport {
         appendLine("Exact alarms allowed: $exactAlarms")
         appendLine("Notification access (rewind): ${MediaAccessService.isGranted(app)}")
         appendLine("Ignoring battery optimizations: ${power.isIgnoringBatteryOptimizations(app.packageName)}")
+        appendLine("Background restricted: ${app.isBackgroundRestricted()}")
         appendLine("Power save mode: ${power.isPowerSaveMode}")
         if (SDK_INT >= P) {
             val bucket = app.getSystemService(UsageStatsManager::class.java).appStandbyBucket

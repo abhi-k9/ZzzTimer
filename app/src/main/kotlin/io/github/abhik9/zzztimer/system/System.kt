@@ -1,10 +1,13 @@
 package io.github.abhik9.zzztimer.system
 
+import android.app.ActivityManager
+import android.app.usage.UsageStatsManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES
+import android.os.Build.VERSION_CODES.P
 import android.os.Build.VERSION_CODES.S
 import android.provider.Settings
 import android.widget.Toast
@@ -42,8 +45,8 @@ fun Context.mediaAccessSettingsIntents(): Array<Intent> {
     }
 }
 
-/** Last resort: OEM builds may lack, or restrict, specific settings screens. */
-private fun Context.appDetailsIntent(): Intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())
+/** App info, also a last resort: OEM builds may lack, or restrict, specific settings screens. */
+fun Context.appDetailsIntent(): Intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())
 
 /**
  * Starts the first of [intents] that can be started, or else the app details settings.
@@ -59,6 +62,16 @@ fun Context.startSettings(vararg intents: Intent, start: (Intent) -> Unit = { st
             diagnostics.warn("settings: not allowed to start $intent", e)
         }
     }
+}
+
+/**
+ * Whether the user restricted the app in the background (battery usage "Restricted", Samsung "Deep sleeping apps"…):
+ * the system may then stop the timer's alarm or service, so that playback is never paused.
+ */
+fun Context.isBackgroundRestricted(): Boolean {
+    if (SDK_INT >= P && getSystemService(ActivityManager::class.java).isBackgroundRestricted) return true
+    return SDK_INT >= VERSION_CODES.R &&
+        getSystemService(UsageStatsManager::class.java).appStandbyBucket == UsageStatsManager.STANDBY_BUCKET_RESTRICTED
 }
 
 @get:StringRes

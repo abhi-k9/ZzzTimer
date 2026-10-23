@@ -85,5 +85,7 @@
     <string name="requirement_notifications_explanation">The timer runs as a notification: it can’t start without it.</string>
     <string name="requirement_alarms_title">Alarms &amp; reminders are off</string>
     <string name="requirement_alarms_explanation">Since Android 17, this permission is required to pause playback on time.</string>
+    <string name="restricted_title">Battery restrictions are on</string>
+    <string name="restricted_explanation">Android may stop ZzzTimer in the background, and the timer may then never pause playback. In App info, set the battery usage to Unrestricted.</string>
     <string name="warning_action">Allow</string>
 </resources>

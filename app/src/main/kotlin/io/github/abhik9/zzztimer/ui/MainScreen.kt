@@ -56,6 +56,7 @@ interface MainActions {
 /**
  * @param onResolve asks the user to resolve a [Requirement] (permission prompt or system settings).
  * @param onAllowMediaAccess opens the Notification access settings, which let ZzzTimer rewind the playing media.
+ * @param onAllowBackground opens the settings where the user can lift the background restrictions of the app.
  * @param onExportDiagnostics asks the user where to export the diagnostics.
  * @param elapsedNow the `elapsedRealtime` clock, the timeline of [Timer.deadline].
  */
@@ -66,6 +67,7 @@ fun MainScreen(
     actions: MainActions,
     onResolve: (Requirement) -> Unit,
     onAllowMediaAccess: () -> Unit,
+    onAllowBackground: () -> Unit,
     onExportDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
     elapsedNow: () -> Long = SystemClock::elapsedRealtime,
@@ -91,8 +93,11 @@ fun MainScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // One warning at a time, in the order they must be resolved.
-                state.missingRequirement?.let { requirement ->
+                val requirement = state.missingRequirement
+                if (requirement != null) {
                     WarningCard(title = requirement.title, body = requirement.explanation, onClick = { onResolve(requirement) })
+                } else if (state.backgroundRestricted) {
+                    WarningCard(title = R.string.restricted_title, body = R.string.restricted_explanation, onClick = onAllowBackground)
                 }
                 TimerCard(state, actions, elapsedNow)
                 StartTimerCard(state, actions, elapsedNow)
@@ -141,7 +146,15 @@ private object PreviewActions : MainActions {
 
 @Composable
 private fun PreviewScreen(state: MainUiState) =
-    MainScreen(state, PreviewActions, onResolve = {}, onAllowMediaAccess = {}, onExportDiagnostics = {}, elapsedNow = { 0L })
+    MainScreen(
+        state,
+        PreviewActions,
+        onResolve = {},
+        onAllowMediaAccess = {},
+        onAllowBackground = {},
+        onExportDiagnostics = {},
+        elapsedNow = { 0L },
+    )
 
 @Preview(name = "Idle")
 @Composable
