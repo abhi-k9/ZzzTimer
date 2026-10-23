@@ -49,7 +49,7 @@ class SleepRoutineTest {
         val audio = FakeAudio(volume = 3)
         val media = FakeMedia(audio, clock = { currentTime })
         SleepRoutine(audio, media = { media }, fade = Duration.ZERO).run()
-        assertEquals(listOf("pause"), audio.events)
+        assertEquals(listOf("session-pause", "pause"), audio.events)
         assertTrue(media.seeks.isEmpty())
         assertEquals(0L, currentTime)
     }
@@ -99,7 +99,7 @@ class SleepRoutineTest {
         val media = FakeMedia(audio, clock = { currentTime })
         SleepRoutine(audio, media = { media }).run()
 
-        assertEquals(listOf("lower", "lower", "lower", "pause", "seek", "set:3"), audio.events)
+        assertEquals(listOf("lower", "lower", "lower", "session-pause", "pause", "seek", "set:3"), audio.events)
         // Faded from 100 s to 130 s: back to 100 s, minus 5% of those 30 s.
         assertEquals(listOf(98_500.milliseconds), media.seeks)
     }
@@ -131,11 +131,26 @@ class SleepRoutineTest {
     }
 
     @Test
+    fun `the playing session is paused directly, and nothing when nothing plays`() = runTest {
+        val audio = FakeAudio(isPlaying = false)
+        var asked = false
+        SleepRoutine(
+            audio,
+            media = {
+                asked = true
+                null
+            },
+        ).run()
+        assertEquals(listOf("pause"), audio.events)
+        assertEquals(false, asked)
+    }
+
+    @Test
     fun `no rewind without a fade`() = runTest {
         val audio = FakeAudio(isVolumeFixed = true)
         val media = FakeMedia(audio, clock = { currentTime })
         SleepRoutine(audio, media = { media }).run()
-        assertEquals(listOf("pause"), audio.events)
+        assertEquals(listOf("session-pause", "pause"), audio.events)
         assertTrue(media.seeks.isEmpty())
     }
 
@@ -144,7 +159,7 @@ class SleepRoutineTest {
         val audio = FakeAudio(volume = 3)
         val media = FakeMedia(audio, clock = { currentTime }, seekable = false)
         SleepRoutine(audio, media = { media }).run()
-        assertEquals(listOf("lower", "lower", "lower", "pause", "set:3"), audio.events)
+        assertEquals(listOf("lower", "lower", "lower", "session-pause", "pause", "set:3"), audio.events)
         assertTrue(media.seeks.isEmpty())
     }
 
@@ -161,7 +176,7 @@ class SleepRoutineTest {
         val audio = FakeAudio(volume = 2, pausable = false)
         val media = FakeMedia(audio, clock = { currentTime })
         SleepRoutine(audio, media = { media }).run()
-        assertEquals(listOf("lower", "lower", "pause"), audio.events)
+        assertEquals(listOf("lower", "lower", "session-pause", "pause"), audio.events)
         assertTrue(media.seeks.isEmpty())
     }
 
@@ -170,7 +185,7 @@ class SleepRoutineTest {
         val audio = FakeAudio(volume = 0)
         val media = FakeMedia(audio, clock = { currentTime })
         SleepRoutine(audio, media = { media }).run()
-        assertEquals(listOf("pause"), audio.events)
+        assertEquals(listOf("session-pause", "pause"), audio.events)
         assertTrue(media.seeks.isEmpty())
         assertEquals(0L, currentTime)
     }
@@ -185,6 +200,8 @@ class SleepRoutineTest {
             override fun current() = if (reads++ == 0) PlaybackPoint("episode", 100.seconds) else error("session died")
 
             override fun seekTo(position: Duration) = Unit
+
+            override fun pause() = Unit
         }
         assertFailsWith<IllegalStateException> { SleepRoutine(audio, media = { media }).run() }
         assertEquals(listOf("lower", "lower", "lower", "pause", "set:3"), audio.events)
@@ -200,7 +217,7 @@ class SleepRoutineTest {
         runCurrent()
         advanceTimeBy(3.seconds)
 
-        assertEquals(listOf("lower", "lower", "lower", "pause", "seek", "set:10"), audio.events)
+        assertEquals(listOf("lower", "lower", "lower", "session-pause", "pause", "seek", "set:10"), audio.events)
         // Faded from 100 s to 102.5 s.
         assertEquals(listOf(99_875.milliseconds), media.seeks)
         assertTrue(job.isCancelled)

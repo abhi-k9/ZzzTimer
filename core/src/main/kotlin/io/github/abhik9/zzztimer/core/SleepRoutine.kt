@@ -22,7 +22,7 @@ interface MediaAudio {
     fun lowerVolume()
     fun restoreVolume(volume: Int)
 
-    /** Asks the active media player to pause. */
+    /** Asks the active media player to pause, see also [PlayingMedia.pause]. */
     fun pause()
 }
 
@@ -42,12 +42,18 @@ interface PlayingMedia {
     fun current(): PlaybackPoint?
 
     fun seekTo(position: Duration)
+
+    /**
+     * Asks this player to pause. More reliable than [MediaAudio.pause], whose pause button reaches the player that
+     * last played, which may not be the one heard.
+     */
+    fun pause()
 }
 
 /**
  * What happens when a timer ends: the volume is gradually lowered over the [fade], playback is paused, then the volume
- * is restored. When the [media] session is available, playback is also rewound to where the fade started, see
- * [rewindTarget].
+ * is restored. When the [media] session is available, it is paused directly, and playback is also rewound to where the
+ * fade started, see [rewindTarget].
  */
 class SleepRoutine(
     private val audio: MediaAudio,
@@ -77,26 +83,29 @@ class SleepRoutine(
         val volume = audio.volume
         val minVolume = audio.minVolume
         log.record { "sleep: volume=$volume min=$minVolume playing=${audio.isPlaying} fixed=${audio.isVolumeFixed} fade=$fade" }
-        // The session playing when the fade started, and where it was. Without a fade, nothing is rewound.
-        var fadeStart: Pair<PlayingMedia, PlaybackPoint>? = null
+        // The session heard, when playing locally (not when casting).
+        val session = if (audio.isPlaying) media() else null
+        // Where the session was when the fade started. Without a fade, nothing is rewound.
+        var fadeStart: PlaybackPoint? = null
         try {
-            // Turned off, or pointless when nothing is playing locally (e.g. when casting) or the volume can't go any lower.
+            // Turned off, or pointless when nothing is playing locally or the volume can't go any lower.
             if (fade.isPositive() && audio.isPlaying && !audio.isVolumeFixed && volume > minVolume) {
-                media()?.let { session ->
-                    val point = session.current()
-                    log.record { "rewind: fade starts at $point" }
-                    if (point != null) fadeStart = session to point
+                if (session != null) {
+                    fadeStart = session.current()
+                    log.record { "rewind: fade starts at $fadeStart" }
                 }
                 fadeOut(minVolume)
             }
         } finally {
             withContext(NonCancellable) {
                 try {
+                    // Both: the pause button also reaches players without session access, and is harmless otherwise.
+                    session?.pause()
                     audio.pause()
-                    log.record { "sleep: pause requested, playing=${audio.isPlaying}" }
+                    log.record { "sleep: pause requested (session: ${session != null}), playing=${audio.isPlaying}" }
                     // Lets the player pause before reading where it stopped, and before the volume goes back up.
                     if (fadeStart != null || audio.volume != volume) delay(restoreDelay)
-                    fadeStart?.let { (session, start) -> rewind(session, start) }
+                    fadeStart?.let { start -> session?.let { rewind(it, start) } }
                 } finally {
                     // Whatever failed before: the volume must never stay low.
                     restore(volume)

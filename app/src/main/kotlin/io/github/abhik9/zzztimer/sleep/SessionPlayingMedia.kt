@@ -61,6 +61,10 @@ internal class SessionPlayingMedia private constructor(
     override fun seekTo(position: Duration) {
         guarded(log, "seeking") { controller.transportControls.seekTo(position.inWholeMilliseconds) }
     }
+
+    override fun pause() {
+        guarded(log, "pausing") { controller.transportControls.pause() }
+    }
 }
 
 /** Runs [block], or logs its failure and returns `null`. */

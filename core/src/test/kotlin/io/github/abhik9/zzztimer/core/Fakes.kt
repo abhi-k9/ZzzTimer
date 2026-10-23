@@ -115,6 +115,10 @@ class FakeMedia(
         audio.events += "seek"
     }
 
+    override fun pause() {
+        audio.events += "session-pause"
+    }
+
     private fun advance() {
         val now = clock()
         if (audio.isPlaying) position += (now - since).milliseconds * speed

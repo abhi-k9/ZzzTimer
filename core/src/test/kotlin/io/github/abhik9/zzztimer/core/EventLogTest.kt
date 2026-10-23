@@ -49,7 +49,7 @@ class EventLogTest {
             listOf(
                 "sleep: volume=2 min=0 playing=true fixed=false fade=30s",
                 "fade: 2 steps of 15s",
-                "sleep: pause requested, playing=false",
+                "sleep: pause requested (session: false), playing=false",
                 "restore: volume 2 requested, now 2",
             ),
             log.messages,
