@@ -45,6 +45,7 @@ interface MainActions {
     fun reduce()
     fun setMinutes(setting: DurationSetting, minutes: Int)
     fun setFadeSeconds(seconds: Int)
+    fun testTimerEnd()
     fun setThemeMode(mode: ThemeMode)
     fun setDynamicColor(enabled: Boolean)
     fun setAutomationEnabled(enabled: Boolean)
@@ -130,6 +131,7 @@ private object PreviewActions : MainActions {
     override fun reduce() = Unit
     override fun setMinutes(setting: DurationSetting, minutes: Int) = Unit
     override fun setFadeSeconds(seconds: Int) = Unit
+    override fun testTimerEnd() = Unit
     override fun setThemeMode(mode: ThemeMode) = Unit
     override fun setDynamicColor(enabled: Boolean) = Unit
     override fun setAutomationEnabled(enabled: Boolean) = Unit

@@ -47,6 +47,18 @@
     <string name="rewind_title">Rewind to where the fade started</string>
     <string name="rewind_description">Once paused, playback goes back to where the volume started to fade. Needs Notification access, only to find the playing media: ZzzTimer doesn’t read your notifications. If Android says it’s restricted, first allow restricted settings from ZzzTimer’s app info menu (⋮).</string>
 
+    <string name="test_title">Test the timer end</string>
+    <string name="test_description">Play something, then start a 10 second timer: you can lock the screen. ZzzTimer then reports what it could do.</string>
+    <string name="test_unavailable">Stop the running timer first</string>
+    <string name="test_report_title">Timer end test</string>
+    <string name="test_nothing_playing">Nothing was playing: play something, then test again.</string>
+    <string name="test_faded">Volume lowered from %1$s to %2$s.</string>
+    <string name="test_volume_refused">Android didn’t let ZzzTimer lower the volume.</string>
+    <string name="test_no_fade">No fade: it is turned off, the volume can’t change, or it was already at its lowest.</string>
+    <string name="test_paused">Playback paused.</string>
+    <string name="test_not_paused">The player didn’t pause.</string>
+    <string name="test_rewound">Rewound to %1$s.</string>
+
     <string name="section_appearance">Appearance</string>
     <string name="theme_title">Theme</string>
     <string name="theme_system">System</string>

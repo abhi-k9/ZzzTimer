@@ -41,6 +41,7 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_AUTOMATION = "automation"
         private const val KEY_DIAGNOSTICS = "diagnostics"
+        private const val KEY_TEST_DEADLINE = "test_deadline"
 
         private val DurationSetting.key: String
             get() = when (this) {
@@ -81,6 +82,11 @@ class SettingsStore private constructor(private val prefs: SharedPreferences) {
     var diagnosticsEnabled: Boolean
         get() = read(KEY_DIAGNOSTICS, false, prefs::getBoolean)
         set(value) = prefs.edit { putBoolean(KEY_DIAGNOSTICS, value) }
+
+    /** Deadline of the running test of the timer end, `0` when none, see [io.github.abhik9.zzztimer.core.TimerEndTest]. */
+    var testDeadline: Long
+        get() = read(KEY_TEST_DEADLINE, 0L, prefs::getLong)
+        set(value) = prefs.edit { putLong(KEY_TEST_DEADLINE, value) }
 
     fun snapshot() = UserSettings(
         durations = DurationSetting.entries.associateWith(::minutes),

@@ -140,6 +140,15 @@ internal fun TimerEndCard(
         checked = state.mediaAccess,
         onCheckedChange = { onAllowMediaAccess() },
     )
+    SettingsDivider()
+    // A real timer: the sleep runs in the background, as at night, and reports what it could do.
+    val idle = state.timer == null
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.test_title)) },
+        supportingContent = { Text(stringResource(if (idle) R.string.test_description else R.string.test_unavailable)) },
+        colors = settingsItemColors(),
+        modifier = Modifier.clickable(enabled = idle, onClick = actions::testTimerEnd),
+    )
 }
 
 @Composable

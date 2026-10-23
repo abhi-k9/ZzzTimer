@@ -13,6 +13,7 @@ import io.github.abhik9.zzztimer.core.DurationSetting
 import io.github.abhik9.zzztimer.core.Requirement
 import io.github.abhik9.zzztimer.core.StartResult
 import io.github.abhik9.zzztimer.core.Timer
+import io.github.abhik9.zzztimer.core.TimerEndTest
 import io.github.abhik9.zzztimer.diagnostics.DiagnosticsReport
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
@@ -121,6 +122,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application), M
         settings.setMinutes(setting, minutes)
         // Refresh the notification actions ("+N", "−N") of a running timer.
         if (setting != DurationSetting.INITIAL) timer.refresh() else null
+    }
+
+    override fun testTimerEnd() = perform {
+        timer.start(TimerEndTest.DURATION).also { result ->
+            if (result is StartResult.Started) settings.testDeadline = result.timer.deadline
+        }
     }
 
     override fun setFadeSeconds(seconds: Int) {

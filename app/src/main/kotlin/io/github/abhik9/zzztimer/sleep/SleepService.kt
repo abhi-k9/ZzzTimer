@@ -155,22 +155,28 @@ class SleepService : Service() {
         // type, which may fade out (see hold()). Its timer notification is replaced: the timer has ended.
         lifecycle.onDeadline(requested = foreground)?.let { enterForeground(NOTIFICATION_ID, sleepingNotification(), it) }
         // Timer operations run on the main thread, see SleepTimer.
-        if (sleepTimer().onDeadline(deadline) == DeadlineOutcome.SLEEP) sleep()
+        if (sleepTimer().onDeadline(deadline) == DeadlineOutcome.SLEEP) sleep(deadline)
         stopWhenIdle()
     }
 
-    private fun sleep() {
+    private fun sleep(deadline: Long) {
         lifecycle.onSleepStarted()
         scope.launch {
             try {
                 mutex.withLock {
+                    val settings = SettingsStore.from(this@SleepService)
                     val audio = AndroidMediaAudio(getSystemService(AudioManager::class.java), diagnostics)
-                    SleepRoutine(
+                    val report = SleepRoutine(
                         audio = audio,
                         media = { SessionPlayingMedia.find(this@SleepService, diagnostics) },
-                        fade = SettingsStore.from(this@SleepService).fadeSeconds.seconds,
+                        fade = settings.fadeSeconds.seconds,
                         log = diagnostics,
                     ).run()
+                    diagnostics.record { "sleep: $report" }
+                    if (deadline > 0 && deadline == settings.testDeadline) {
+                        settings.testDeadline = 0
+                        TestReportNotification.post(this@SleepService, report)
+                    }
                 }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
