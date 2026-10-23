@@ -19,6 +19,8 @@ import androidx.core.content.IntentCompat
 import io.github.abhik9.zzztimer.EXTRA_DEADLINE
 import io.github.abhik9.zzztimer.R
 import io.github.abhik9.zzztimer.core.DeadlineOutcome
+import io.github.abhik9.zzztimer.core.ForegroundMode
+import io.github.abhik9.zzztimer.core.ServiceLifecycle
 import io.github.abhik9.zzztimer.core.SleepRoutine
 import io.github.abhik9.zzztimer.diagnostics.diagnostics
 import io.github.abhik9.zzztimer.settings.SettingsStore
@@ -117,11 +119,8 @@ class SleepService : Service() {
     private val mutex = Mutex()
 
     // Main thread only.
-    private var runningSleeps = 0
+    private val lifecycle = ServiceLifecycle()
     private var lastStartId = 0
-
-    /** Held in the foreground for a running timer, see [hold]. */
-    private var held = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -130,8 +129,8 @@ class SleepService : Service() {
         when (intent?.action) {
             ACTION_HOLD -> hold(intent, startId)
             ACTION_RELEASE -> {
-                diagnostics.record { "service: release #$startId, running=$runningSleeps" }
-                held = false
+                diagnostics.record { "service: release #$startId, running=${lifecycle.runningSleeps}" }
+                lifecycle.onRelease()
                 stopWhenIdle()
             }
             else -> onDeadline(intent, startId)
@@ -143,27 +142,25 @@ class SleepService : Service() {
         // startForeground() must be called right away, whatever the extras.
         val notification = IntentCompat.getParcelableExtra(intent, EXTRA_NOTIFICATION, Notification::class.java)
         val id = if (notification != null) intent.getIntExtra(EXTRA_NOTIFICATION_ID, NOTIFICATION_ID) else NOTIFICATION_ID
-        held = enterForeground(id, notification ?: sleepingNotification(), mediaPlayback = true)
-        diagnostics.record { "service: hold #$startId, held=$held" }
+        lifecycle.onHold(enterForeground(id, notification ?: sleepingNotification(), ForegroundMode.LONG))
+        diagnostics.record { "service: hold #$startId, held=${lifecycle.held}" }
         stopWhenIdle()
     }
 
     private fun onDeadline(intent: Intent?, startId: Int) {
         val foreground = intent?.getBooleanExtra(EXTRA_FOREGROUND, false) == true
         val deadline = intent?.getLongExtra(EXTRA_DEADLINE, 0L) ?: 0L
-        diagnostics.record { "service: start #$startId, foreground=$foreground, held=$held, deadline=$deadline, running=$runningSleeps" }
-        // Must be called right away when started with `startForegroundService()`. A held service stays a media
-        // playback one, which may fade out (see hold()). Its timer notification is replaced: the timer has ended.
-        if (foreground || held) enterForeground(NOTIFICATION_ID, sleepingNotification(), mediaPlayback = held)
-        // The hold ends with this sleep.
-        held = false
+        diagnostics.record { "service: deadline #$startId, foreground=$foreground, held=${lifecycle.held}, deadline=$deadline" }
+        // Must be called right away when started with `startForegroundService()`. A held service keeps its foreground
+        // type, which may fade out (see hold()). Its timer notification is replaced: the timer has ended.
+        lifecycle.onDeadline(requested = foreground)?.let { enterForeground(NOTIFICATION_ID, sleepingNotification(), it) }
         // Timer operations run on the main thread, see SleepTimer.
         if (sleepTimer().onDeadline(deadline) == DeadlineOutcome.SLEEP) sleep()
         stopWhenIdle()
     }
 
     private fun sleep() {
-        runningSleeps++
+        lifecycle.onSleepStarted()
         scope.launch {
             try {
                 mutex.withLock {
@@ -177,7 +174,7 @@ class SleepService : Service() {
                 }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
-                    runningSleeps--
+                    lifecycle.onSleepFinished()
                     stopWhenIdle()
                 }
             }
@@ -189,7 +186,7 @@ class SleepService : Service() {
      * does not need one (e.g. a dismissal) must not interrupt a running fade.
      */
     private fun stopWhenIdle() {
-        if (runningSleeps > 0 || held) return
+        if (!lifecycle.canStop) return
         diagnostics.record { "service: stop #$lastStartId" }
         stopSelf(lastStartId)
     }
@@ -216,12 +213,15 @@ class SleepService : Service() {
         .build()
 
     /**
-     * @param mediaPlayback whether the service runs as a media playback one (held), otherwise as a short service.
+     * As a media playback foreground service for [ForegroundMode.LONG], a short service otherwise.
      * @return whether the service is now in the foreground.
      */
-    private fun enterForeground(id: Int, notification: Notification, mediaPlayback: Boolean): Boolean {
+    private fun enterForeground(id: Int, notification: Notification, mode: ForegroundMode): Boolean {
         if (SDK_INT < UPSIDE_DOWN_CAKE) return false
-        val type = if (mediaPlayback) FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
+        val type = when (mode) {
+            ForegroundMode.LONG -> FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            ForegroundMode.SHORT -> FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
+        }
         return try {
             startForeground(id, notification, type)
             true
