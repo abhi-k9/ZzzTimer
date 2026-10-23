@@ -140,15 +140,22 @@ class SleepRoutine(
         if (target != null) session.seekTo(target)
     }
 
-    /** Delay between two volume steps, so that the whole fade lasts the [fade]. */
-    fun fadeStepDelay(steps: Int): Duration = if (steps <= 0) Duration.ZERO else fade / steps
+    /**
+     * Delays after each of [steps] volume steps, summing up to the [fade]. They grow as the volume gets lower, the last
+     * one about twice as long as the first, so that the fade is the most gradual when it gets quiet.
+     */
+    fun fadeStepDelays(steps: Int): List<Duration> {
+        if (steps <= 0) return emptyList()
+        val weights = List(steps) { 1.0 + it.toDouble() / steps }
+        val total = weights.sum()
+        return weights.map { fade * (it / total) }
+    }
 
     private suspend fun fadeOut(min: Int) {
         val steps = audio.volume - min
-        val stepDelay = fadeStepDelay(steps)
-        log.record { "fade: $steps steps of $stepDelay" }
+        log.record { "fade: $steps steps over $fade" }
         // Bounded: the volume may never reach `min` (user interaction, OEM policies…).
-        repeat(steps) {
+        for (stepDelay in fadeStepDelays(steps)) {
             val before = audio.volume
             audio.lowerVolume()
             delay(stepDelay)

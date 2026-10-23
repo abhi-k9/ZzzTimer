@@ -31,17 +31,30 @@ class SleepRoutineTest {
     @Test
     fun `fade lasts its duration, whatever the number of volume steps`() {
         val routine = SleepRoutine(FakeAudio(), fade = 30.seconds)
-        assertEquals(Duration.ZERO, routine.fadeStepDelay(0))
-        assertEquals(1.2.seconds, routine.fadeStepDelay(25))
-        for (steps in 1..1000) assertTrue(routine.fadeStepDelay(steps) * steps in 30.seconds - 1.milliseconds..30.seconds)
+        assertTrue(routine.fadeStepDelays(0).isEmpty())
+        for (steps in 1..1000) {
+            val total = routine.fadeStepDelays(steps).reduce(Duration::plus)
+            assertTrue(total in 30.seconds - 1.milliseconds..30.seconds + 1.milliseconds, "$steps steps: $total")
+        }
+    }
+
+    @Test
+    fun `fade is the most gradual when it gets quiet`() {
+        val delays = SleepRoutine(FakeAudio(), fade = 30.seconds).fadeStepDelays(3)
+        assertEquals(listOf(7.5.seconds, 10.seconds, 12.5.seconds), delays)
+        for (steps in 2..100) {
+            val all = SleepRoutine(FakeAudio()).fadeStepDelays(steps)
+            assertEquals(all.sorted(), all)
+            assertTrue(all.last() > all.first() * 1.49)
+        }
     }
 
     @Test
     fun `fade duration is configurable`() = runTest {
         val audio = FakeAudio(volume = 4)
-        SleepRoutine(audio, fade = 10.seconds).run()
+        SleepRoutine(audio, fade = 11.seconds).run()
         assertEquals(listOf("lower", "lower", "lower", "lower", "pause", "set:4"), audio.events)
-        assertEquals(10_000L + 2_000L, currentTime)
+        assertEquals(11_000L + 2_000L, currentTime)
     }
 
     @Test
@@ -82,7 +95,7 @@ class SleepRoutineTest {
         SleepRoutine(audio).run()
         assertEquals(listOf("lower", "pause"), audio.events)
         // A single step of the 30 s fade, instead of the whole fade.
-        assertEquals(10_000L, currentTime)
+        assertEquals(7_500L, currentTime)
     }
 
     @Test
@@ -217,7 +230,7 @@ class SleepRoutineTest {
         runCurrent()
         advanceTimeBy(3.seconds)
 
-        assertEquals(listOf("lower", "lower", "lower", "session-pause", "pause", "seek", "set:10"), audio.events)
+        assertEquals(listOf("lower", "lower", "lower", "lower", "session-pause", "pause", "seek", "set:10"), audio.events)
         // Faded from 100 s to 102.5 s.
         assertEquals(listOf(99_875.milliseconds), media.seeks)
         assertTrue(job.isCancelled)
@@ -232,7 +245,7 @@ class SleepRoutineTest {
         runCurrent()
         advanceTimeBy(3.seconds)
 
-        assertEquals(listOf("lower", "lower", "lower", "pause", "set:10"), audio.events)
+        assertEquals(listOf("lower", "lower", "lower", "lower", "pause", "set:10"), audio.events)
         assertTrue(job.isCancelled)
     }
 }
