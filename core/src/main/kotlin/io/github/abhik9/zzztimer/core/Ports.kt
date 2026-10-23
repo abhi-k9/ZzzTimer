@@ -42,3 +42,47 @@ interface SleepTrigger {
 
 /** Something the user must allow before a timer can run, in the order they must be resolved. */
 enum class Requirement { NOTIFICATIONS, EXACT_ALARMS }
+
+/**
+ * The media audio stream of the device.
+ */
+interface MediaAudio {
+    /** Current volume index. */
+    val volume: Int
+    val minVolume: Int
+    val isPlaying: Boolean
+
+    /** Whether the volume can't be changed (e.g. fixed volume devices). */
+    val isVolumeFixed: Boolean
+
+    /** Lowers the volume by one step. */
+    fun lowerVolume()
+    fun restoreVolume(volume: Int)
+
+    /** Asks the active media player to pause, see also [PlayingMedia.pause]. */
+    fun pause()
+}
+
+/** Where a player is in what it plays. */
+data class PlaybackPoint(
+    /** What is playing (e.g. a track or an episode), `null` when the player doesn't say. */
+    val item: String?,
+    /** Position in [item], in media time: 10 seconds at 2× speed move it by 20 seconds. */
+    val position: Duration,
+)
+
+/**
+ * The media session playing when the timer ends, available when the user allows it (Notification access).
+ */
+interface PlayingMedia {
+    /** Where the player is now, `null` when it can't tell or can't seek, e.g. a live stream. */
+    fun current(): PlaybackPoint?
+
+    fun seekTo(position: Duration)
+
+    /**
+     * Asks this player to pause. More reliable than [MediaAudio.pause], whose pause button reaches the player that
+     * last played, which may not be the one heard.
+     */
+    fun pause()
+}
