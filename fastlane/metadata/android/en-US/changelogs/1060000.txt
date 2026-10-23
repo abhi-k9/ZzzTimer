@@ -1,0 +1,5 @@
+- Before the timer ends: a small vibration (adjustable), and optionally shake the phone to keep listening.
+- Bedtime: optionally start a timer when something plays at night.
+- Test the timer end from the settings: ZzzTimer reports what it could do.
+- Pauses the playing app directly (with Notification access), and a gentler end of the fade.
+- Warns when battery restrictions may keep the timer from pausing playback.
