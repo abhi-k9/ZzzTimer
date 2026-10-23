@@ -66,8 +66,9 @@ adb shell am broadcast -n io.github.abhik9.zzztimer/.automation.AutomationReceiv
 ## Diagnostics
 
 To investigate an issue, turn on **Record diagnostics** in the app settings, reproduce it, then **Export log** to a file.
-The log records what the timer does and why (timer operations, alarms, deadlines, the fade out, the sleep service,
-automation, permissions, crashes), and the export starts with a snapshot of the app and device state. It is off by
+The log records what the timer does and why (timer operations, alarms, deadlines, the warning, shakes, bedtime, the
+fade out and its report, the sleep service, automation, permissions, crashes), and the export starts with a snapshot of
+the app and device state. It is off by
 default, capped at about 512 KB, and never leaves the device unless exported (see the [privacy policy](PRIVACY.md)).
 
 ## How it works
@@ -94,9 +95,15 @@ default, capped at about 512 KB, and never leaves the device unless exported (se
   accounted for. Players that can't seek (e.g. live streams) are only paused. The Notification access listener is only
   there to be enabled: it unbinds itself right away, and never receives notifications.
 
-The `:core` module holds the logic in pure Kotlin, unit tested on the JVM: `SleepTimer`, the fade out (`SleepRoutine`)
-and the automation API. It defines small interfaces (`TimerDisplay`, `SleepTrigger`, `MediaAudio`, `PlayingMedia`,
-`DeviceClock`, `EventLog`) that `:app` implements with the platform APIs, next to the Jetpack Compose UI.
+The `:core` module holds the logic in pure Kotlin, unit tested on the JVM:
+
+- `SleepTimer`: every timer operation, and the warning before the end.
+- `SleepRoutine`: the fade out, pause and rewind, and the `SleepReport` of what it did (see `TimerEndTest`).
+- `ServiceLifecycle`: when the sleep service runs, and in which foreground; `ShakeDetector`: what a shake is.
+- `Bedtime`, the one-tap controls (`toggleControl`, `WidgetLayout`), the automation API, and the settings bounds.
+
+It defines small interfaces (`TimerDisplay`, `SleepTrigger`, `MediaAudio`, `PlayingMedia`, `DeviceClock`, `EventLog`)
+that `:app` implements with the platform APIs, next to the Jetpack Compose UI.
 
 ## Building
 
