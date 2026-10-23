@@ -3,30 +3,43 @@ package io.github.abhik9.zzztimer.ui
 import android.icu.text.MeasureFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
+import android.text.format.DateFormat
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.abhik9.zzztimer.R
+import java.util.Calendar
+import kotlin.math.roundToInt
 
 @Composable
 internal fun SectionHeader(@StringRes title: Int, modifier: Modifier = Modifier) = Text(
@@ -97,5 +110,69 @@ private fun MeasureFormat.formatParts(value: Int, large: MeasureUnit, small: Mea
         whole == 0 -> format(Measure(rest, small))
         rest == 0 -> format(Measure(whole, large))
         else -> formatMeasures(Measure(whole, large), Measure(rest, small))
+    }
+}
+
+/** Picks a value of [range] in [step]s, saved once released. */
+@Composable
+internal fun SliderItem(
+    @StringRes title: Int,
+    @StringRes description: Int,
+    value: Int,
+    range: IntRange,
+    step: Int,
+    label: @Composable (Int) -> String,
+    onChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Follows the slider while it is dragged.
+    var current by remember(value) { mutableIntStateOf(value) }
+    val currentLabel = label(current)
+    ListItem(
+        headlineContent = { Text(stringResource(title)) },
+        supportingContent = {
+            Column {
+                Text(stringResource(description))
+                Slider(
+                    value = current.toFloat(),
+                    onValueChange = { current = it.roundToInt() },
+                    onValueChangeFinished = { onChange(current) },
+                    valueRange = range.first.toFloat()..range.last.toFloat(),
+                    steps = (range.last - range.first) / step - 1,
+                    modifier = Modifier.semantics { stateDescription = currentLabel },
+                )
+            }
+        },
+        trailingContent = { Text(currentLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) },
+        colors = settingsItemColors(),
+        modifier = modifier,
+    )
+}
+
+@Composable
+internal fun SwitchItem(
+    @StringRes title: Int,
+    @StringRes description: Int,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) = ListItem(
+    headlineContent = { Text(stringResource(title)) },
+    supportingContent = { Text(stringResource(description)) },
+    trailingContent = { Switch(checked = checked, onCheckedChange = null) },
+    colors = settingsItemColors(),
+    modifier = modifier.toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange),
+)
+
+/** A time of the day, in [minute]s, in the user's time format. */
+@Composable
+internal fun formatTimeOfDay(minute: Int): String {
+    val context = LocalContext.current
+    return remember(minute, context) {
+        val time = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, minute / 60)
+            set(Calendar.MINUTE, minute % 60)
+        }.time
+        DateFormat.getTimeFormat(context).format(time)
     }
 }
